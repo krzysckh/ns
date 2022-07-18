@@ -8,13 +8,16 @@
 static void html_print_tree(HTML_elem *el, int depth) {
   int i;
 
-  printf("%d\n", depth);
+  /*printf("%d\n", depth);*/
   for (i = 0; i < depth; ++i)
     printf("  ");
 
   printf("type %d, children: %d\n", el->t, el->child_n);
-  if (el->t == TEXT_TYPE)
+  if (el->t == TEXT_TYPE) {
+    for (i = 0; i < 1 + depth; ++i)
+      printf("  ");
     printf("text: %s\n", el->TT_val);
+  }
 
   for (i = 0; i < el->child_n; ++i)
     html_print_tree(&el->child[i], depth + 1);
@@ -77,7 +80,7 @@ static HTML_elem_type get_elem_type(char *text) {
   char *lcase;
 
   while (!iswspace(*text) && *text != '>') {
-    printf("%c\n", *text);
+    /*printf("%c\n", *text);*/
     ++name_sz;
     ++text;
   }
@@ -88,12 +91,12 @@ static HTML_elem_type get_elem_type(char *text) {
 
   printf("lcase = %s\n", lcase);
 
-
   if (strcmp(lcase, "html") == 0) ret = HTML;
   else if (strcmp(lcase, "head") == 0) ret = HEAD;
-  else if (strcmp(lcase, "head") == 0) ret = BODY;
+  else if (strcmp(lcase, "body") == 0) ret = BODY;
   else if (strcmp(lcase, "p") == 0) ret = PARAGRAPH;
 
+  printf("*lcase = %c\n", *lcase);
   if (*lcase == '/') ret = INTERNAL_BACK;
 
   free(lcase);
@@ -104,6 +107,9 @@ static HTML_elem create_child_fromhere(char *text, HTML_elem *parent) {
   HTML_elem ret;
   init_HTML_elem(&ret, parent);
 
+  if (text == NULL)
+    return *parent;
+
   int tt_len = 0;
 
   while (iswspace(*text))
@@ -112,7 +118,9 @@ static HTML_elem create_child_fromhere(char *text, HTML_elem *parent) {
   if (*text != '<') {
     ret.t = TEXT_TYPE;
 
-    while (*text != '<' && *text != EOF) {
+    while (*text != '<') {
+      if (*text == 0)
+        return *parent;
       ++tt_len;
       ++text;
     }
@@ -120,18 +128,34 @@ static HTML_elem create_child_fromhere(char *text, HTML_elem *parent) {
     ret.TT_val = malloc(tt_len + 1);
     strncpy(ret.TT_val, text - tt_len, tt_len);
     ret.TT_val[tt_len] = 0;
+
+    HTML_elem tmp = create_child_fromhere(text, parent);
+    elem_append_child(parent, &tmp);
+    /* returns ret */
   } else {
     ++text;
     ret.t = get_elem_type(text);
     while (*text++ != '>')
-      ;
+      if (text == NULL)
+        return *parent;
 
     if (ret.t != INTERNAL_BACK) {
       HTML_elem tmp = create_child_fromhere(text, &ret);
-      elem_append_child(&ret, &tmp);
+
+      if (tmp.t == TEXT_TYPE) {
+        tmp.parent = parent;
+        elem_append_child(parent, &tmp);
+        return *parent;
+      }
+
+      if (tmp.t == INTERNAL_BACK)
+        return ret;
+      else
+        elem_append_child(&ret, &tmp);
     } else {
-      HTML_elem tmp = create_child_fromhere(text, ret.parent);
-      elem_append_child(ret.parent, &tmp);
+      HTML_elem tmp = create_child_fromhere(text, parent->parent);
+      elem_append_child(parent->parent, &tmp);
+      return *parent;
     }
   }
 
@@ -141,6 +165,8 @@ static HTML_elem create_child_fromhere(char *text, HTML_elem *parent) {
 HTML_elem create_HTML_tree(FILE *fp) {
   HTML_elem ret;
   init_HTML_elem(&ret, NULL);
+  ret.t = ROOT;
+
   char *text;
   int text_sz;
 
@@ -150,7 +176,7 @@ HTML_elem create_HTML_tree(FILE *fp) {
 
   text = malloc(text_sz + 1);
   fread(text, 1, text_sz, fp);
-  ret = create_child_fromhere(text, NULL);
+  ret = create_child_fromhere(text, &ret);
 
   html_print_tree(&ret, 0);
 
