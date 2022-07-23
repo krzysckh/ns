@@ -27,6 +27,7 @@ void init_HTML_elem(HTML_elem *el, HTML_elem *parent) {
   el->t= -1;
   el->argc = 0;
   el->child_n = 0;
+  el->child = NULL;
   el->parent = parent;
   el->TT_val = NULL;
 }
@@ -55,18 +56,11 @@ static void elem_ptr_cpy(HTML_elem *to, HTML_elem *from) {
 
 static void elem_append_child(HTML_elem *parent, HTML_elem *child) {
   /* assumes init_HTML_elem() */
-  if (parent->child_n > 0) {
-    parent->child = realloc(parent->child, sizeof(HTML_elem));
-    elem_ptr_cpy(&parent->child[parent->child_n], child);
+  parent->child = realloc(parent->child, sizeof(HTML_elem));
+  elem_ptr_cpy(&parent->child[parent->child_n], child);
+  parent->child[parent->child_n].parent = parent;
 
-    parent->child_n++;
-  } else {
-    parent->child = malloc(sizeof(HTML_elem));
-
-    elem_ptr_cpy(&parent->child[parent->child_n], child);
-    parent->child[parent->child_n].parent = parent;
-    parent->child_n++;
-  }
+  parent->child_n++;
 }
 
 static void cpt_to_lower(char *from, char *to, int l) {
@@ -153,8 +147,11 @@ static HTML_elem create_child_fromhere(char *text, HTML_elem *parent) {
       else
         elem_append_child(&ret, &tmp);
     } else {
-      HTML_elem tmp = create_child_fromhere(text, parent->parent);
-      elem_append_child(parent->parent, &tmp);
+      /*HTML_elem tmp = create_child_fromhere(text, parent->parent);*/
+      /*elem_append_child(parent->parent, &tmp);*/
+
+      HTML_elem tmp = create_child_fromhere(text, parent);
+      elem_append_child(parent, &tmp);
       return *parent;
     }
   }

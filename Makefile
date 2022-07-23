@@ -7,5 +7,5 @@ all: $(OFILES)
 .c.o:
 	$(CC) $(CFLAGS) -c $<
 clean:
-	rm -f *.o ns
+	rm -f *.o ns *.core
 
