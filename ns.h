@@ -6,6 +6,7 @@ typedef enum {
   HEAD,
   BODY,
   PARAGRAPH,
+  BOLD,
 
   UNKNOWN,
 
@@ -28,5 +29,9 @@ typedef struct HTML_elem {
 } HTML_elem;
 
 void free_HTML_elem(HTML_elem *el);
-HTML_elem create_HTML_tree(FILE *fp);
+HTML_elem *create_HTML_tree(FILE *fp);
+void render_page(HTML_elem *page);
+
+void err(char *fmt, ...);
+void warn(char *fmt, ...);
 

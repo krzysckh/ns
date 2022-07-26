@@ -8,11 +8,11 @@
 static void html_print_tree(HTML_elem *el, int depth) {
   int i;
 
-  /*printf("%d\n", depth);*/
   for (i = 0; i < depth; ++i)
     printf("  ");
 
-  printf("type %d, children: %d\n", el->t, el->child_n);
+  printf("type %d, children: %d, addr: %p, parent: %p\n", el->t, el->child_n,
+      el, el->parent);
   if (el->t == TEXT_TYPE) {
     for (i = 0; i < 1 + depth; ++i)
       printf("  ");
@@ -56,7 +56,6 @@ static HTML_elem_type get_elem_type(char *text) {
   char *lcase;
 
   while (!iswspace(*text) && *text != '>') {
-    /*printf("%c\n", *text);*/
     ++name_sz;
     ++text;
   }
@@ -69,6 +68,7 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "head") == 0) ret = HEAD;
   else if (strcmp(lcase, "body") == 0) ret = BODY;
   else if (strcmp(lcase, "p") == 0) ret = PARAGRAPH;
+  else if (strcmp(lcase, "B") == 0) ret = BOLD;
 
   if (*lcase == '/') ret = INTERNAL_BACK;
 
@@ -76,11 +76,11 @@ static HTML_elem_type get_elem_type(char *text) {
   return ret;
 }
 
-HTML_elem create_HTML_tree(FILE *fp) {
-  HTML_elem ret,
-            *cur = &ret;
-  init_HTML_elem(&ret, &ret);
-  ret.t = ROOT;
+HTML_elem *create_HTML_tree(FILE *fp) {
+  HTML_elem *ret = malloc(sizeof(HTML_elem)),
+            *cur = ret;
+  init_HTML_elem(ret, ret);
+  ret->t = ROOT;
 
   char *text,
        *text_orig_p;
@@ -101,7 +101,7 @@ HTML_elem create_HTML_tree(FILE *fp) {
       ++text;
 
     if (*text == '<') {
-      ++cur->child_n;
+      cur->child_n++;
       cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
       init_HTML_elem(&cur->child[cur->child_n-1], cur);
       cur = &cur->child[cur->child_n-1];
@@ -115,7 +115,6 @@ HTML_elem create_HTML_tree(FILE *fp) {
         cur->child_n--;
         cur = cur->parent;
       }
-      /* ? */
     } else {
       tt_sz = 0;
 
@@ -142,7 +141,7 @@ HTML_elem create_HTML_tree(FILE *fp) {
     }
   }
 
-  html_print_tree(&ret, 0);
+  html_print_tree(ret, 0);
 
   free(text_orig_p);
   return ret;

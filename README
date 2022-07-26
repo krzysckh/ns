@@ -2,3 +2,8 @@ ns
 
 ns (netskater) is a tiny web browser
 
+
+
+references
+----------
+- https://github.com/jsynacek/xft-example/blob/master/main.c
