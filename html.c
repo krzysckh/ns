@@ -45,24 +45,6 @@ void free_HTML_elem(HTML_elem *el) {
     free_HTML_elem(&el->child[i]);
 }
 
-static void elem_ptr_cpy(HTML_elem *to, HTML_elem *from) {
-  to->t = from->t;
-  to->argc = from->argc;
-  to->argv = from->argv;
-  to->child_n = from->child_n;
-  to->child = from->child;
-  to->TT_val = from->TT_val;
-}
-
-static void elem_append_child(HTML_elem *parent, HTML_elem *child) {
-  /* assumes init_HTML_elem() */
-  parent->child = realloc(parent->child, sizeof(HTML_elem));
-  elem_ptr_cpy(&parent->child[parent->child_n], child);
-  parent->child[parent->child_n].parent = parent;
-
-  parent->child_n++;
-}
-
 static void cpt_to_lower(char *from, char *to, int l) {
   while (l--)
     *to++ = tolower(*from++);
@@ -83,89 +65,27 @@ static HTML_elem_type get_elem_type(char *text) {
   lcase[name_sz] = 0;
   cpt_to_lower(text - name_sz, lcase, name_sz);
 
-  printf("lcase = %s\n", lcase);
-
   if (strcmp(lcase, "html") == 0) ret = HTML;
   else if (strcmp(lcase, "head") == 0) ret = HEAD;
   else if (strcmp(lcase, "body") == 0) ret = BODY;
   else if (strcmp(lcase, "p") == 0) ret = PARAGRAPH;
 
-  printf("*lcase = %c\n", *lcase);
   if (*lcase == '/') ret = INTERNAL_BACK;
 
   free(lcase);
   return ret;
 }
 
-static HTML_elem create_child_fromhere(char *text, HTML_elem *parent) {
-  HTML_elem ret;
-  init_HTML_elem(&ret, parent);
-
-  if (text == NULL)
-    return *parent;
-
-  int tt_len = 0;
-
-  while (iswspace(*text))
-    ++text;
-
-  if (*text != '<') {
-    ret.t = TEXT_TYPE;
-
-    while (*text != '<') {
-      if (*text == 0)
-        return *parent;
-      ++tt_len;
-      ++text;
-    }
-
-    ret.TT_val = malloc(tt_len + 1);
-    strncpy(ret.TT_val, text - tt_len, tt_len);
-    ret.TT_val[tt_len] = 0;
-
-    HTML_elem tmp = create_child_fromhere(text, parent);
-    elem_append_child(parent, &tmp);
-    /* returns ret */
-  } else {
-    ++text;
-    ret.t = get_elem_type(text);
-    while (*text++ != '>')
-      if (text == NULL)
-        return *parent;
-
-    if (ret.t != INTERNAL_BACK) {
-      HTML_elem tmp = create_child_fromhere(text, &ret);
-
-      if (tmp.t == TEXT_TYPE) {
-        tmp.parent = parent;
-        elem_append_child(parent, &tmp);
-        return *parent;
-      }
-
-      if (tmp.t == INTERNAL_BACK)
-        return ret;
-      else
-        elem_append_child(&ret, &tmp);
-    } else {
-      /*HTML_elem tmp = create_child_fromhere(text, parent->parent);*/
-      /*elem_append_child(parent->parent, &tmp);*/
-
-      HTML_elem tmp = create_child_fromhere(text, parent);
-      elem_append_child(parent, &tmp);
-      return *parent;
-    }
-  }
-
-  return ret;
-}
-
 HTML_elem create_HTML_tree(FILE *fp) {
-  HTML_elem ret;
-  init_HTML_elem(&ret, NULL);
+  HTML_elem ret,
+            *cur = &ret;
+  init_HTML_elem(&ret, &ret);
   ret.t = ROOT;
 
-  char *text;
-  int text_sz;
+  char *text,
+       *text_orig_p;
+  int text_sz,
+      tt_sz;
 
   fseek(fp, 0, SEEK_END);
   text_sz = ftell(fp);
@@ -173,11 +93,58 @@ HTML_elem create_HTML_tree(FILE *fp) {
 
   text = malloc(text_sz + 1);
   fread(text, 1, text_sz, fp);
-  ret = create_child_fromhere(text, &ret);
+  text[text_sz] = 0;
+  text_orig_p = text;
+
+  while (*text) {
+    while (iswspace(*text))
+      ++text;
+
+    if (*text == '<') {
+      ++cur->child_n;
+      cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
+      init_HTML_elem(&cur->child[cur->child_n-1], cur);
+      cur = &cur->child[cur->child_n-1];
+      
+      ++text;
+      cur->t = get_elem_type(text);
+      while (*text++ != '>')
+        ;
+      if (cur->t == INTERNAL_BACK) {
+        cur = cur->parent;
+        cur->child_n--;
+        cur = cur->parent;
+      }
+      /* ? */
+    } else {
+      tt_sz = 0;
+
+      cur->child_n++;
+      cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
+      init_HTML_elem(&cur->child[cur->child_n-1], cur);
+      cur = &cur->child[cur->child_n-1];
+      cur->t = TEXT_TYPE;
+
+      while (*text && *text++ != '<')
+        ++tt_sz;
+      --text;
+
+      cur->TT_val = malloc(tt_sz + 1);
+      if (tt_sz <= 0) {
+        cur->TT_val[0] = 0;
+        ++text;
+      } else {
+        strncpy(cur->TT_val, text-tt_sz, tt_sz-1);
+        cur->TT_val[tt_sz-1] = 0;
+      }
+
+      cur = cur->parent;
+    }
+  }
 
   html_print_tree(&ret, 0);
 
-  free(text);
+  free(text_orig_p);
   return ret;
 }
 
