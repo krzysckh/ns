@@ -58,7 +58,6 @@ static void x_recursive_render_text(XftDraw *xd, XftColor *color,
   char *draw;
   Text_attr at;
 
-  printf("maxlen = %d, x = %d\n", maxlen, *x);
   if (maxlen <= 0) {
     *y = *y + fontsz * 2;
     *x = padding;
@@ -66,7 +65,6 @@ static void x_recursive_render_text(XftDraw *xd, XftColor *color,
     if (maxlen <= 0)
       maxlen = 1;
     /* fuck off */
-    printf("maxlen = %d, x = %d\n", maxlen, *x);
   }
 
   if (el->t == PARAGRAPH || el->t == BREAK_LINE) {
@@ -81,6 +79,7 @@ static void x_recursive_render_text(XftDraw *xd, XftColor *color,
     draw = el->TT_val;
 
     while (*draw) {
+#if 0
       if (scroll)
         if (*curr_scroll) {
           printf("curr_scroll: %d\n", *curr_scroll);
@@ -88,6 +87,7 @@ static void x_recursive_render_text(XftDraw *xd, XftColor *color,
           draw += ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw);
           break;
         }
+#endif
       if (*y > maxh)
         return;
       if (at.bold)
@@ -195,11 +195,13 @@ static void x_render_page(HTML_elem *page) {
       XNextEvent(dpy, &ev);
 
     if (ev.type == Expose || force_expose) {
+#if 0
       if (force_expose) {
         /*XFlush(dpy);*/
         XSync(dpy, True);
         force_expose = 0;
       }
+#endif
 
       printf("scroll: %d\n", scroll);
       x_now = padding, y_now = padding;
@@ -211,12 +213,14 @@ static void x_render_page(HTML_elem *page) {
 
       x_recursive_render_text(xd, &color, &x_now, &y_now, page, width, height,
           scroll, &cscroll);
+
     } else if (ev.type == KeyPress) {
       XLookupString(&ev.xkey, NULL, 0, &ks, NULL);
 
       switch (ks) {
         case XK_Escape:
           goto endloop;
+#if 0
         case XK_k:
           if (scroll)
             --scroll;
@@ -226,6 +230,7 @@ static void x_render_page(HTML_elem *page) {
           ++scroll;
           force_expose = 1;
           break;
+#endif
       }
     }
   }
