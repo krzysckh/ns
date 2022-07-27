@@ -37,9 +37,13 @@ void x_recursive_render_text(XftDraw *xd, XftColor *color, XftFont *font,
 
   if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
-    get_text_attr(el, &at);
-    XftDrawStringUtf8(xd, color, font, *x, *y, (const FcChar8*)el->TT_val,
-        strlen(el->TT_val));
+    /*get_text_attr(el, &at);*/
+    if (at.bold)
+      XftDrawStringUtf8(xd, color, font, *x, *y, (const FcChar8*)"kutas",
+          strlen("kutas"));
+    else
+      XftDrawStringUtf8(xd, color, font, *x, *y, (const FcChar8*)el->TT_val,
+          strlen(el->TT_val));
 
     /*XDrawString(d, w, DefaultGC(d, s), *x, *y, el->TT_val,*/
           /*strlen(el->TT_val));*/

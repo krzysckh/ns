@@ -24,7 +24,7 @@ static void html_print_tree(HTML_elem *el, int depth) {
 }
 
 void init_HTML_elem(HTML_elem *el, HTML_elem *parent) {
-  el->t= -1;
+  el->t = -1;
   el->argc = 0;
   el->child_n = 0;
   el->child = NULL;
@@ -68,7 +68,7 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "head") == 0) ret = HEAD;
   else if (strcmp(lcase, "body") == 0) ret = BODY;
   else if (strcmp(lcase, "p") == 0) ret = PARAGRAPH;
-  else if (strcmp(lcase, "B") == 0) ret = BOLD;
+  else if (strcmp(lcase, "b") == 0) ret = BOLD;
 
   if (*lcase == '/') ret = INTERNAL_BACK;
 
@@ -78,14 +78,17 @@ static HTML_elem_type get_elem_type(char *text) {
 
 HTML_elem *create_HTML_tree(FILE *fp) {
   HTML_elem *ret = malloc(sizeof(HTML_elem)),
-            *cur = ret;
+            *cur = ret,
+            *cur_b;
   init_HTML_elem(ret, ret);
   ret->t = ROOT;
 
   char *text,
        *text_orig_p;
   int text_sz,
-      tt_sz;
+      tt_sz,
+      i;
+  HTML_elem_type tmp_t;
 
   fseek(fp, 0, SEEK_END);
   text_sz = ftell(fp);
@@ -101,43 +104,50 @@ HTML_elem *create_HTML_tree(FILE *fp) {
       ++text;
 
     if (*text == '<') {
-      cur->child_n++;
-      cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
-      init_HTML_elem(&cur->child[cur->child_n-1], cur);
-      cur = &cur->child[cur->child_n-1];
-      
       ++text;
-      cur->t = get_elem_type(text);
+      tmp_t = get_elem_type(text);
       while (*text++ != '>')
         ;
-      if (cur->t == INTERNAL_BACK) {
+      if (tmp_t == INTERNAL_BACK) {
         cur = cur->parent;
-        cur->child_n--;
-        cur = cur->parent;
+      } else {
+        cur->child_n++;
+        cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
+        if (cur->child_n > 1)
+          for (i = 0; i < cur->child_n; ++i)
+            cur->child[i].parent = cur;
+        init_HTML_elem(&cur->child[cur->child_n-1], cur);
+
+        cur_b = cur;
+        cur = &cur->child[cur->child_n-1];
+        cur->t = tmp_t;
       }
     } else {
       tt_sz = 0;
 
       cur->child_n++;
       cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
-      init_HTML_elem(&cur->child[cur->child_n-1], cur);
-      cur = &cur->child[cur->child_n-1];
-      cur->t = TEXT_TYPE;
+      if (cur->child_n > 1)
+        for (i = 0; i < cur->child_n; ++i)
+          cur->child[i].parent = cur;
+      init_HTML_elem(&cur->child[cur->child_n-1], cur_b);
+      cur_b = NULL;
+      /*cur = &cur->child[cur->child_n-1];*/
+      cur->child[cur->child_n-1].t = TEXT_TYPE;
 
       while (*text && *text++ != '<')
         ++tt_sz;
       --text;
 
-      cur->TT_val = malloc(tt_sz + 1);
+      cur->child[cur->child_n-1].TT_val = malloc(tt_sz + 1);
       if (tt_sz <= 0) {
-        cur->TT_val[0] = 0;
+        cur->child[cur->child_n-1].TT_val[0] = 0;
         ++text;
       } else {
-        strncpy(cur->TT_val, text-tt_sz, tt_sz-1);
-        cur->TT_val[tt_sz-1] = 0;
+        strncpy(cur->child[cur->child_n-1].TT_val, text-tt_sz, tt_sz-1);
+        cur->child[cur->child_n-1].TT_val[tt_sz-1] = 0;
       }
-
-      cur = cur->parent;
+      /*cur = cur->parent->*/
     }
   }
 
