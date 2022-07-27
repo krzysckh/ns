@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdint.h>
 
+static void x_render_page(HTML_elem*);
+
 typedef struct {
   uint8_t bold;
 } Text_attr;
@@ -20,6 +22,10 @@ void get_text_attr(HTML_elem *el, Text_attr *attr) {
     get_text_attr(el->parent, attr);
 }
 
+void render_page(HTML_elem *page) {
+  x_render_page(page);
+}
+
 #ifdef USE_X
 
 #define fontname "DejaVu Sans Mono:size=7:antialias=true"
@@ -30,14 +36,14 @@ void get_text_attr(HTML_elem *el, Text_attr *attr) {
 
 #include <X11/Xft/Xft.h>
 
-void x_recursive_render_text(XftDraw *xd, XftColor *color, XftFont *font,
+static void x_recursive_render_text(XftDraw *xd, XftColor *color, XftFont *font,
     int *x, int *y, HTML_elem *el) {
   int i;
   Text_attr at;
 
   if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
-    /*get_text_attr(el, &at);*/
+    get_text_attr(el, &at);
     if (at.bold)
       XftDrawStringUtf8(xd, color, font, *x, *y, (const FcChar8*)"kutas",
           strlen("kutas"));
@@ -54,7 +60,7 @@ void x_recursive_render_text(XftDraw *xd, XftColor *color, XftFont *font,
   }
 }
 
-void render_page(HTML_elem *page) {
+static void x_render_page(HTML_elem *page) {
   int s,
       width = 640,
       height = 480,

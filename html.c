@@ -76,6 +76,16 @@ static HTML_elem_type get_elem_type(char *text) {
   return ret;
 }
 
+static void fucking_update_tt_parentship(HTML_elem *root) {
+  int i;
+  for (i = 0; i < root->child_n; ++i) {
+    root->child[i].parent = root;
+  }
+  for (i = 0; i < root->child_n; ++i) {
+    fucking_update_tt_parentship(&root->child[i]);
+  }
+}
+
 HTML_elem *create_HTML_tree(FILE *fp) {
   HTML_elem *ret = malloc(sizeof(HTML_elem)),
             *cur = ret,
@@ -113,12 +123,8 @@ HTML_elem *create_HTML_tree(FILE *fp) {
       } else {
         cur->child_n++;
         cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
-        if (cur->child_n > 1)
-          for (i = 0; i < cur->child_n; ++i)
-            cur->child[i].parent = cur;
         init_HTML_elem(&cur->child[cur->child_n-1], cur);
 
-        cur_b = cur;
         cur = &cur->child[cur->child_n-1];
         cur->t = tmp_t;
       }
@@ -127,30 +133,28 @@ HTML_elem *create_HTML_tree(FILE *fp) {
 
       cur->child_n++;
       cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
-      if (cur->child_n > 1)
-        for (i = 0; i < cur->child_n; ++i)
-          cur->child[i].parent = cur;
-      init_HTML_elem(&cur->child[cur->child_n-1], cur_b);
-      cur_b = NULL;
-      /*cur = &cur->child[cur->child_n-1];*/
-      cur->child[cur->child_n-1].t = TEXT_TYPE;
+      init_HTML_elem(&cur->child[cur->child_n-1], cur);
+
+      cur = &cur->child[cur->child_n-1];
+      cur->t = TEXT_TYPE;
 
       while (*text && *text++ != '<')
         ++tt_sz;
       --text;
 
-      cur->child[cur->child_n-1].TT_val = malloc(tt_sz + 1);
+      cur->TT_val = malloc(tt_sz + 1);
       if (tt_sz <= 0) {
-        cur->child[cur->child_n-1].TT_val[0] = 0;
+        cur->TT_val[0] = 0;
         ++text;
       } else {
-        strncpy(cur->child[cur->child_n-1].TT_val, text-tt_sz, tt_sz-1);
-        cur->child[cur->child_n-1].TT_val[tt_sz-1] = 0;
+        strncpy(cur->TT_val, text-tt_sz, tt_sz-1);
+        cur->TT_val[tt_sz-1] = 0;
       }
-      /*cur = cur->parent->*/
+      cur = cur->parent;
     }
   }
 
+  fucking_update_tt_parentship(ret);
   html_print_tree(ret, 0);
 
   free(text_orig_p);
