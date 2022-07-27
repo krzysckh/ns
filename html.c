@@ -64,11 +64,18 @@ static HTML_elem_type get_elem_type(char *text) {
   lcase[name_sz] = 0;
   cpt_to_lower(text - name_sz, lcase, name_sz);
 
+  /*printf("lcase = %s\n", lcase);*/
+
   if (strcmp(lcase, "html") == 0) ret = HTML;
   else if (strcmp(lcase, "head") == 0) ret = HEAD;
   else if (strcmp(lcase, "body") == 0) ret = BODY;
   else if (strcmp(lcase, "p") == 0) ret = PARAGRAPH;
   else if (strcmp(lcase, "b") == 0) ret = BOLD;
+  else if (strcmp(lcase, "i") == 0) ret = ITALIC;
+  else if (strcmp(lcase, "br") == 0) ret = BREAK_LINE;
+  else if (strcmp(lcase, "ol") == 0) ret = UNORDERED_LIST;
+  else if (strcmp(lcase, "ul") == 0) ret = ORDERED_LIST;
+  else if (strcmp(lcase, "li") == 0) ret = LIST_ELEM;
 
   if (*lcase == '/') ret = INTERNAL_BACK;
 
@@ -88,16 +95,14 @@ static void fucking_update_tt_parentship(HTML_elem *root) {
 
 HTML_elem *create_HTML_tree(FILE *fp) {
   HTML_elem *ret = malloc(sizeof(HTML_elem)),
-            *cur = ret,
-            *cur_b;
+            *cur = ret;
   init_HTML_elem(ret, ret);
   ret->t = ROOT;
 
   char *text,
        *text_orig_p;
   int text_sz,
-      tt_sz,
-      i;
+      tt_sz;
   HTML_elem_type tmp_t;
 
   fseek(fp, 0, SEEK_END);
@@ -109,7 +114,7 @@ HTML_elem *create_HTML_tree(FILE *fp) {
   text[text_sz] = 0;
   text_orig_p = text;
 
-  while (*text) {
+  while (*(text+1)) {
     while (iswspace(*text))
       ++text;
 
@@ -121,12 +126,21 @@ HTML_elem *create_HTML_tree(FILE *fp) {
       if (tmp_t == INTERNAL_BACK) {
         cur = cur->parent;
       } else {
-        cur->child_n++;
-        cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
-        init_HTML_elem(&cur->child[cur->child_n-1], cur);
+        /*printf("text - 2 = %s\n", text-2);*/
+        if (*(text-2) == '/') {
+          puts("giga kutas");
+          cur->child_n++;
+          cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
+          init_HTML_elem(&cur->child[cur->child_n-1], cur);
+          cur->child[cur->child_n-1].t = tmp_t;
+        } else {
+          cur->child_n++;
+          cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
+          init_HTML_elem(&cur->child[cur->child_n-1], cur);
 
-        cur = &cur->child[cur->child_n-1];
-        cur->t = tmp_t;
+          cur = &cur->child[cur->child_n-1];
+          cur->t = tmp_t;
+        }
       }
     } else {
       tt_sz = 0;
@@ -144,11 +158,11 @@ HTML_elem *create_HTML_tree(FILE *fp) {
 
       cur->TT_val = malloc(tt_sz + 1);
       if (tt_sz <= 0) {
-        cur->TT_val[0] = 0;
+        cur->TT_val[1] = 0;
         ++text;
       } else {
-        strncpy(cur->TT_val, text-tt_sz, tt_sz-1);
-        cur->TT_val[tt_sz-1] = 0;
+        strncpy(cur->TT_val, text-tt_sz, tt_sz);
+        cur->TT_val[tt_sz] = 0;
       }
       cur = cur->parent;
     }

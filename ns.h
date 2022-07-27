@@ -7,6 +7,12 @@ typedef enum {
   BODY,
   PARAGRAPH,
   BOLD,
+  ITALIC,
+  BREAK_LINE,
+
+  UNORDERED_LIST,
+  ORDERED_LIST,
+  LIST_ELEM,
 
   UNKNOWN,
 
