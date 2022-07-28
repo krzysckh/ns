@@ -203,7 +203,6 @@ static void x_render_page(HTML_elem *page) {
       }
 #endif
 
-      printf("scroll: %d\n", scroll);
       x_now = padding, y_now = padding;
       cscroll = scroll;
 
