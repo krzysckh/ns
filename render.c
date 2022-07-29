@@ -5,22 +5,45 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <time.h>
+
 static void x_render_page(HTML_elem*);
 
 typedef struct {
   uint8_t bold;
   uint8_t italic;
   uint8_t paragraph;
+
+  uint8_t h1;
+  uint8_t h2;
+  uint8_t h3;
+  uint8_t h4;
+  uint8_t h5;
+  uint8_t h6;
 } Text_attr;
 
 void init_text_attr(Text_attr *attr) {
   attr->bold = 0;
   attr->italic = 0;
+
+  attr->h1 = 0;
+  attr->h2 = 0;
+  attr->h3 = 0;
+  attr->h4 = 0;
+  attr->h5 = 0;
+  attr->h6 = 0;
 }
 
 void get_text_attr(HTML_elem *el, Text_attr *attr) {
   if (el->t == BOLD) attr->bold = 1;
   if (el->t == ITALIC) attr->italic = 1;
+
+  if (el->t == H1) attr->h1 = 1;
+  if (el->t == H2) attr->h2 = 1;
+  if (el->t == H3) attr->h3 = 1;
+  if (el->t == H4) attr->h4 = 1;
+  if (el->t == H5) attr->h5 = 1;
+  if (el->t == H6) attr->h6 = 1;
 
   if (el->t != ROOT)
     get_text_attr(el->parent, attr);
@@ -32,10 +55,18 @@ void render_page(HTML_elem *page) {
 
 #ifdef USE_X
 
-#define fontname_n "DejaVu Sans Mono:size=7:antialias=true"
-#define fontname_b "DejaVu Sans Mono:size=7:antialias=true:style=bold"
-#define fontname_i "DejaVu Serif:size=7:antialias=true:style=Italic:hinting=true"
-#define fontsz 7
+#define font_t "Dejavu Sans Mono"
+#define fontname_n "DejaVu Sans Mono:size=8:antialias=true"
+#define fontname_b "DejaVu Sans Mono:size=8:antialias=true:style=bold"
+#define fontname_i "DejaVu Serif:size=8:antialias=true:style=Italic:hinting=true"
+#define fontsz 8
+
+#define h1_sz "20"
+#define h2_sz "15"
+#define h3_sz "10"
+#define h4_sz "8"
+#define h5_sz "6"
+#define h6_sz "4"
 
 #define padding 10
 
@@ -49,7 +80,25 @@ XftFont *font_n;
 XftFont *font_b;
 XftFont *font_i;
 
-static void x_recursive_render_text(XftDraw *xd, XftColor *color,
+static void x_load_render_destroy(const char *fontn, const char *txt,
+    const char *color, int x, int y, int len, Display *dpy, XftDraw *xd) {
+  int s = DefaultScreen(dpy);
+  XftColor c;
+
+  XftFont *fnt = XftFontOpenName(dpy, s, fontn);
+
+  if (!fnt)
+    err("%s: couldn't load font %s", __FILE__, fontn);
+
+  if (!XftColorAllocName(dpy, DefaultVisual(dpy, s), 
+        DefaultColormap(dpy, s), color, &c))
+    err("%s: couldn't allocate xft color", __FILE__);
+
+  XftDrawStringUtf8(xd, &c, fnt, x, y, (const FcChar8*)txt, len);
+  XftColorFree(dpy, DefaultVisual(dpy, s), DefaultColormap(dpy, s), &c);
+}
+
+static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     int *x, int *y, HTML_elem *el, int maxw, int maxh, int scroll, 
     int *curr_scroll) {
   int i,
@@ -96,23 +145,63 @@ static void x_recursive_render_text(XftDraw *xd, XftColor *color,
       else if (at.italic)
         XftDrawStringUtf8(xd, color, font_i, *x, *y, (const FcChar8*)draw,
             ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw));
+      else if (at.h1) {
+        *y = *y + (2*atoi(h1_sz));
+        x_load_render_destroy(font_t":size="h1_sz":style=bold", draw,
+            "#000000", *x, *y,
+          ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
+        *y = *y + (2*atoi(h1_sz));
+      } else if (at.h2) {
+        *y = *y + (2*atoi(h2_sz));
+        x_load_render_destroy(font_t":size="h2_sz":style=bold", draw,
+            "#000000", *x, *y,
+          ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
+        *y = *y + (2*atoi(h2_sz));
+      } else if (at.h3) {
+        *y = *y + (2*atoi(h3_sz));
+        x_load_render_destroy(font_t":size="h3_sz":style=bold", draw,
+            "#000000", *x, *y,
+          ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
+        *y = *y + (2*atoi(h3_sz));
+      } else if (at.h4) {
+        *y = *y + (2*atoi(h4_sz));
+        x_load_render_destroy(font_t":size="h4_sz":style=bold", draw,
+            "#000000", *x, *y,
+          ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
+        *y = *y + (2*atoi(h4_sz));
+      } else if (at.h5) {
+        *y = *y + (2*atoi(h5_sz));
+        x_load_render_destroy(font_t":size="h5_sz":style=bold", draw,
+            "#000000", *x, *y,
+          ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
+        *y = *y + (2*atoi(h5_sz));
+      } else if (at.h6) {
+        *y = *y + (2*atoi(h6_sz));
+        x_load_render_destroy(font_t":size="h6_sz":style=bold", draw,
+            "#000000", *x, *y,
+          ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
+        *y = *y + (2*atoi(h6_sz));
+      }
       else
         XftDrawStringUtf8(xd, color, font_n, *x, *y, (const FcChar8*)draw,
             ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw));
 
       draw += ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw);
-      *y = *y + 16;
+      *y = *y + fontsz * 2;
       *x = padding;
     }
 
-    *y = *y - 16;
-    *x = bakx + (strlen(el->TT_val) * fontsz);
+    *y = *y - fontsz * 2;
+    if (at.h1 || at.h2 || at.h3 || at.h4 || at.h5 || at.h6)
+      *x = padding;
+    else 
+      *x = bakx + (strlen(el->TT_val) * fontsz);
 
     /*XDrawString(d, w, DefaultGC(d, s), *x, *y, el->TT_val,*/
           /*strlen(el->TT_val));*/
   } else {
     for (i = 0; i < el->child_n; ++i)
-      x_recursive_render_text(xd, color, x, y, &el->child[i], maxw, maxh,
+      x_recursive_render_text(dpy, xd, color, x, y, &el->child[i], maxw, maxh,
           scroll, curr_scroll);
   }
 }
@@ -152,6 +241,8 @@ static void x_render_page(HTML_elem *page) {
   Visual *visual;
   XftDraw *xd;
   XftColor color;
+  clock_t time_start,
+          time_end;
 
   Display *dpy = XOpenDisplay(NULL);
   if (!dpy) {
@@ -210,8 +301,13 @@ static void x_render_page(HTML_elem *page) {
       width = wa.width;
       height = wa.height;
 
-      x_recursive_render_text(xd, &color, &x_now, &y_now, page, width, height,
-          scroll, &cscroll);
+      time_start = clock();
+      x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
+          height, scroll, &cscroll);
+      time_end = clock();
+      fprintf(stderr, "%s: x_recursive_render_text() -> took %6.4f\n",
+          __FILE__, (double)(time_end - time_start) / CLOCKS_PER_SEC);
+
 
     } else if (ev.type == KeyPress) {
       XLookupString(&ev.xkey, NULL, 0, &ks, NULL);

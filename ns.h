@@ -10,6 +10,13 @@ typedef enum {
   ITALIC,
   BREAK_LINE,
 
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+
   UNORDERED_LIST,
   ORDERED_LIST,
   LIST_ELEM,

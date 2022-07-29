@@ -77,6 +77,13 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "ul") == 0) ret = ORDERED_LIST;
   else if (strcmp(lcase, "li") == 0) ret = LIST_ELEM;
 
+  else if (strcmp(lcase, "h1") == 0) ret = H1;
+  else if (strcmp(lcase, "h2") == 0) ret = H2;
+  else if (strcmp(lcase, "h3") == 0) ret = H3;
+  else if (strcmp(lcase, "h4") == 0) ret = H4;
+  else if (strcmp(lcase, "h5") == 0) ret = H5;
+  else if (strcmp(lcase, "h6") == 0) ret = H6;
+
   if (*lcase == '/') ret = INTERNAL_BACK;
 
   free(lcase);
