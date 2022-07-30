@@ -77,7 +77,7 @@ void render_page(HTML_elem *page) {
 #define fontname_i "DejaVu Serif:pixelsize=15:antialias=true:style=Italic:hinting=true"
 #define fontsz 15
 
-#define fontratio 1x2
+#define fontratio 1.5
 
 #define h1_sz "40"
 #define h2_sz "30"
@@ -163,9 +163,9 @@ static int x_table_approx_height(HTML_elem *el, int width, int x) {
       ret += (ta.paragraph * (fontsz * 2));
 
       cur_child_len = x_get_full_child_text_len(&el->child[i]);
-      while ((width - x) / fontsz < cur_child_len) {
+      while ((width - x) / (fontsz / fontratio) < cur_child_len) {
         ret += (2*fontsz);
-        cur_child_len -= ((width - x) / fontsz);
+        cur_child_len -= ((width - x) / (fontsz / fontratio));
       }
 
       maxlen = (maxlen > ret) ? maxlen : ret;
@@ -243,7 +243,7 @@ static void x_render_table(Display *dpy, XftDraw *xd, XftColor *color, int *x,
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding) {
   int i,
-      maxlen = (maxw - *x) / fontsz,
+      maxlen = (maxw - *x) / (fontsz / fontratio),
       bakx = *x;
   char *draw;
   Text_attr at;
@@ -251,7 +251,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   if (maxlen <= 0) {
     *y = *y + fontsz * 2;
     *x = (use_padding) ? padding : bakx;
-    maxlen = (maxw - *x) / fontsz;
+    maxlen = (maxw - *x) / (fontsz / fontratio);
     if (maxlen <= 0)
       maxlen = 1;
     /* fuck off */
@@ -337,7 +337,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     if (at.h1 || at.h2 || at.h3 || at.h4 || at.h5 || at.h6)
       *x = (use_padding) ? padding : bakx;
     else 
-      *x = bakx + (strlen(el->TT_val) * (fontsz/2));
+      *x = bakx + (strlen(el->TT_val) * (fontsz / fontratio));
 
     /*XDrawString(d, w, DefaultGC(d, s), *x, *y, el->TT_val,*/
           /*strlen(el->TT_val));*/

@@ -183,12 +183,12 @@ HTML_elem *create_HTML_tree(FILE *fp) {
     }
   }
 
+  fucking_update_tt_parentship(ret);
+  html_print_tree(ret, 0);
+
   if (cur != ret)
     warn("%s: your html is bad: cur != ret (%p != %p)", __FILE__,
         cur, ret);
-
-  fucking_update_tt_parentship(ret);
-  html_print_tree(ret, 0);
 
   free(text_orig_p);
 
