@@ -105,6 +105,21 @@ static int fuck_you_this_is_bak_x = padding;
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding);
 
+static int x_get_maxlen(int maxw, int *x, int *y, int use_padding, int bakx,
+    int l_fontsz, double l_fontratio, int fix_xy) {
+  int ret = (maxw - *x) / (l_fontsz / l_fontratio);
+
+  if (ret <= 0 && fix_xy) {
+    *y = *y + l_fontsz * 2;
+    *x = (use_padding) ? padding : bakx;
+    ret = (maxw - *x) / (l_fontsz / l_fontratio);
+    if (ret <= 0)
+      ret = 1;
+    /* fuck off */
+  }
+  
+  return ret;
+}
 static void x_load_render_destroy(const char *fontn, const char *txt,
     const char *color, int x, int y, int len, Display *dpy, XftDraw *xd) {
   int s = DefaultScreen(dpy);
@@ -143,7 +158,7 @@ static int x_table_approx_height(HTML_elem *el, int width, int x) {
   int i,
       ret,
       cur_child_len,
-      maxlen = 0;
+      longest = 0;
   Text_attr ta;
 
   for (i = 0; i < el->child_n; ++i) {
@@ -163,16 +178,17 @@ static int x_table_approx_height(HTML_elem *el, int width, int x) {
       ret += (ta.paragraph * (fontsz * 2));
 
       cur_child_len = x_get_full_child_text_len(&el->child[i]);
+/* TODO: change this to use x_get_maxlen() */
       while ((width - x) / (fontsz / fontratio) < cur_child_len) {
         ret += (2*fontsz);
         cur_child_len -= ((width - x) / (fontsz / fontratio));
       }
 
-      maxlen = (maxlen > ret) ? maxlen : ret;
+      longest = (longest > ret) ? longest : ret;
     }
   }
 
-  ret = maxlen;
+  ret = longest;
 
   return ret;
 }
@@ -243,27 +259,27 @@ static void x_render_table(Display *dpy, XftDraw *xd, XftColor *color, int *x,
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding) {
   int i,
-      maxlen = (maxw - *x) / (fontsz / fontratio),
+      maxlen, 
       bakx = *x;
   char *draw;
   Text_attr at;
-
-  if (maxlen <= 0) {
-    *y = *y + fontsz * 2;
-    *x = (use_padding) ? padding : bakx;
-    maxlen = (maxw - *x) / (fontsz / fontratio);
-    if (maxlen <= 0)
-      maxlen = 1;
-    /* fuck off */
-  }
 
   if (el->t == TABLE) {
     x_render_table(dpy, xd, color, x, y, el, maxw, maxh);
     return;
   }
 
-  if (el->t == PARAGRAPH || el->t == BREAK_LINE) {
-    *y = *y + (fontsz * 2);
+  if (el->t == PARAGRAPH 
+      || el->t == BREAK_LINE
+      || el->t == H1
+      || el->t == H2
+      || el->t == H3
+      || el->t == H4
+      || el->t == H5
+      || el->t == H6
+      ) {
+    if (use_padding)
+      *y = *y + (fontsz * 2);
     *x = (use_padding) ? padding : fuck_you_this_is_bak_x;
   }
 
@@ -277,6 +293,22 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     }
 
     draw = el->TT_val;
+
+    if (at.h1) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+        atoi(h1_sz), fontratio, 1);
+    else if (at.h2) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+        atoi(h2_sz), fontratio, 1);
+    else if (at.h3) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+        atoi(h3_sz), fontratio, 1);
+    else if (at.h4) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+        atoi(h4_sz), fontratio, 1);
+    else if (at.h5) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+        atoi(h5_sz), fontratio, 1);
+    else if (at.h6) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+        atoi(h6_sz), fontratio, 1);
+    else
+      maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx, fontsz, fontratio, 
+          1);
 
     while (*draw) {
       if (*y > maxh)
