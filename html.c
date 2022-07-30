@@ -4,6 +4,7 @@
 #include <string.h>
 #include <wctype.h>
 #include <ctype.h>
+#include <time.h>
 
 static void html_print_tree(HTML_elem *el, int depth) {
   int i;
@@ -105,6 +106,9 @@ static void fucking_update_tt_parentship(HTML_elem *root) {
 }
 
 HTML_elem *create_HTML_tree(FILE *fp) {
+  clock_t fn_start = clock(),
+          fn_end;
+
   HTML_elem *ret = malloc(sizeof(HTML_elem)),
             *cur = ret;
   init_HTML_elem(ret, ret);
@@ -179,10 +183,18 @@ HTML_elem *create_HTML_tree(FILE *fp) {
     }
   }
 
+  if (cur != ret)
+    warn("%s: your html is bad: cur != ret (%p != %p)", __FILE__,
+        cur, ret);
+
   fucking_update_tt_parentship(ret);
   html_print_tree(ret, 0);
 
   free(text_orig_p);
+
+  fn_end = clock();
+  info("%s: create_HTML_tree() -> took %6.4f",
+      __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
   return ret;
 }
 

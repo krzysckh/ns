@@ -1,7 +1,5 @@
 #include "ns.h"
 
-/* TODO: scroll is literally just y padding - why am i so stupid (!!) */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,6 +77,8 @@ void render_page(HTML_elem *page) {
 #define fontname_i "DejaVu Serif:pixelsize=15:antialias=true:style=Italic:hinting=true"
 #define fontsz 15
 
+#define fontratio 1x2
+
 #define h1_sz "40"
 #define h2_sz "30"
 #define h3_sz "25"
@@ -100,9 +100,10 @@ XftFont *font_n;
 XftFont *font_b;
 XftFont *font_i;
 
+static int fuck_you_this_is_bak_x = padding;
+
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
-    int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding,
-    int scroll, int *curr_scroll);
+    int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding);
 
 static void x_load_render_destroy(const char *fontn, const char *txt,
     const char *color, int x, int y, int len, Display *dpy, XftDraw *xd) {
@@ -203,8 +204,9 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
     *y += fontsz;
 
     if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH) {
+      fuck_you_this_is_bak_x = *x;
       x_recursive_render_text(dpy, xd, color, x, y, &el->child[i],
-          *x + t_width, *y + t_height, 0, 0, NULL);
+          *x + t_width, *y + t_height, 0);
 
       ++rendered_c;
 
@@ -216,12 +218,14 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
   *y += t_height;
   *x = padding;
   XftDrawRect(xd, color, *x, *y, maxw - *x - padding, table_bwidth);
+  
+  fuck_you_this_is_bak_x = padding;
 }
 
 static void x_render_table(Display *dpy, XftDraw *xd, XftColor *color, int *x,
     int *y, HTML_elem *table_root, int maxw, int maxh) {
   *y += padding;
-  *x = padding;
+  *x = fuck_you_this_is_bak_x;
   /* x is set here, and at the end of x_render_table_row() */
 
   int i;
@@ -237,8 +241,7 @@ static void x_render_table(Display *dpy, XftDraw *xd, XftColor *color, int *x,
 }
 
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
-    int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding,
-    int scroll, int *curr_scroll) {
+    int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding) {
   int i,
       maxlen = (maxw - *x) / fontsz,
       bakx = *x;
@@ -260,29 +263,22 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   }
 
   if (el->t == PARAGRAPH || el->t == BREAK_LINE) {
-    *y = *y + fontsz * 2;
-    *x = (use_padding) ? padding : bakx;
+    *y = *y + (fontsz * 2);
+    *x = (use_padding) ? padding : fuck_you_this_is_bak_x;
   }
 
   if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
     get_text_attr(el, &at, 0);
 
-    if (at.table > 1)
+    if (at.table > 1) {
       warn("%s: tables in tables not supported!", __FILE__);
+      return;
+    }
 
     draw = el->TT_val;
 
     while (*draw) {
-#if 0
-      if (scroll)
-        if (*curr_scroll) {
-          printf("curr_scroll: %d\n", *curr_scroll);
-          --*curr_scroll;
-          draw += ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw);
-          break;
-        }
-#endif
       if (*y > maxh)
         return;
       if (at.bold)
@@ -341,14 +337,14 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     if (at.h1 || at.h2 || at.h3 || at.h4 || at.h5 || at.h6)
       *x = (use_padding) ? padding : bakx;
     else 
-      *x = bakx + (strlen(el->TT_val) * (fontsz * 2));
+      *x = bakx + (strlen(el->TT_val) * (fontsz/2));
 
     /*XDrawString(d, w, DefaultGC(d, s), *x, *y, el->TT_val,*/
           /*strlen(el->TT_val));*/
   } else {
     for (i = 0; i < el->child_n; ++i)
       x_recursive_render_text(dpy, xd, color, x, y, &el->child[i], maxw, maxh,
-        use_padding, scroll, curr_scroll);
+        use_padding);
   }
 }
 
@@ -376,9 +372,8 @@ static void x_render_page(HTML_elem *page) {
       height = 480,
       x_now = padding,
       y_now = padding,
-      force_expose = 0,
-      scroll = 0,
-      cscroll = 0;
+      force_expose = 0;
+  signed int scroll = 0;
   Window win;
   XEvent ev;
   XWindowAttributes wa;
@@ -386,7 +381,8 @@ static void x_render_page(HTML_elem *page) {
   Colormap cmap;
   Visual *visual;
   XftDraw *xd;
-  XftColor color;
+  XftColor color,
+           bgcolor;
   clock_t time_start,
           time_end;
 
@@ -413,12 +409,15 @@ static void x_render_page(HTML_elem *page) {
     WhitePixel(dpy, s)
   );
 
-  XSelectInput(dpy, win, ExposureMask | KeyPressMask);
+  XSelectInput(dpy, win, ExposureMask | KeyPressMask | ButtonPressMask);
   XMapWindow(dpy, win);
 
   XStoreName(dpy, win, "netskater");
 
   x_init_fonts(dpy, s, visual, cmap, "#000000", &color);
+
+  if (!XftColorAllocName(dpy, visual, cmap, "#ffffff", &bgcolor))
+    err("%s: couldn't allocate xft color", __FILE__);
 
   xd = XftDrawCreate(
     dpy,
@@ -432,16 +431,15 @@ static void x_render_page(HTML_elem *page) {
       XNextEvent(dpy, &ev);
 
     if (ev.type == Expose || force_expose) {
-#if 0
       if (force_expose) {
-        /*XFlush(dpy);*/
-        XSync(dpy, True);
+        /* it is a hack, 'cause i have no idea how to properly send an Expose
+         * event
+         */
+        XftDrawRect(xd, &bgcolor, 0, 0, width, height);
         force_expose = 0;
       }
-#endif
 
-      x_now = padding, y_now = padding;
-      cscroll = scroll;
+      x_now = padding, y_now = padding + (scroll * 10);
 
       XGetWindowAttributes(dpy, win, &wa);
       width = wa.width;
@@ -449,29 +447,41 @@ static void x_render_page(HTML_elem *page) {
 
       time_start = clock();
       x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
-          height, 1, scroll, &cscroll);
+          height, 1);
       time_end = clock();
       info("%s: x_recursive_render_text() -> took %6.4f",
           __FILE__, (double)(time_end - time_start) / CLOCKS_PER_SEC);
-
 
     } else if (ev.type == KeyPress) {
       XLookupString(&ev.xkey, NULL, 0, &ks, NULL);
 
       switch (ks) {
         case XK_Escape:
+        case XK_q:
           goto endloop;
-#if 0
         case XK_k:
-          if (scroll)
-            --scroll;
-          force_expose = 1;
+          if (scroll < 0) {
+            ++scroll;
+            force_expose = 1;
+          }
           break;
         case XK_j:
-          ++scroll;
+          --scroll;
           force_expose = 1;
           break;
-#endif
+      }
+    } else if (ev.type == ButtonPress) {
+      switch (ev.xkey.keycode) {
+        case Button4:
+          if (scroll < 0) {
+            ++scroll;
+            force_expose = 1;
+          }
+          break;
+        case Button5:
+          --scroll;
+          force_expose = 1;
+          break;
       }
     }
   }
