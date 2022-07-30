@@ -1,5 +1,7 @@
 #include "ns.h"
 
+/* TODO: scroll is literally just y padding - why am i so stupid (!!) */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +22,8 @@ typedef struct {
   uint8_t h4;
   uint8_t h5;
   uint8_t h6;
+
+  uint8_t table;
 } Text_attr;
 
 void init_text_attr(Text_attr *attr) {
@@ -32,6 +36,8 @@ void init_text_attr(Text_attr *attr) {
   attr->h4 = 0;
   attr->h5 = 0;
   attr->h6 = 0;
+
+  attr->table = 0;
 }
 
 void get_text_attr(HTML_elem *el, Text_attr *attr) {
@@ -44,6 +50,8 @@ void get_text_attr(HTML_elem *el, Text_attr *attr) {
   if (el->t == H4) attr->h4 = 1;
   if (el->t == H5) attr->h5 = 1;
   if (el->t == H6) attr->h6 = 1;
+
+  if (el->t == TABLE) attr->table++;
 
   if (el->t != ROOT)
     get_text_attr(el->parent, attr);
@@ -70,6 +78,8 @@ void render_page(HTML_elem *page) {
 
 #define padding 10
 
+#define table_bwidth 1
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xos.h>
@@ -79,6 +89,10 @@ void render_page(HTML_elem *page) {
 XftFont *font_n;
 XftFont *font_b;
 XftFont *font_i;
+
+static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
+    int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding,
+    int scroll, int *curr_scroll);
 
 static void x_load_render_destroy(const char *fontn, const char *txt,
     const char *color, int x, int y, int len, Display *dpy, XftDraw *xd) {
@@ -98,9 +112,80 @@ static void x_load_render_destroy(const char *fontn, const char *txt,
   XftColorFree(dpy, DefaultVisual(dpy, s), DefaultColormap(dpy, s), &c);
 }
 
+/* approximates how big should a table row be */
+/* and does a bad job at it :)) */
+static int x_table_approx_height(HTML_elem *el, int width, int y, int maxh) {
+  int i,
+      tr_ct = 0;
+
+  for (i = 0; i < el->parent->child_n; ++i)
+    if (el->parent->child[i].t == TABLE_TR)
+      ++tr_ct;
+
+  return ((maxh - padding - (tr_ct * table_bwidth)) / tr_ct) / 2;
+  /* just pure randomness */
+}
+
+static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
+    int *x, int *y, HTML_elem *el, int maxw, int maxh) {
+  int t_width,
+      t_height,
+      i,
+      c_count = 0,
+      bak_x = *x,
+      bak_y = *y,
+      rendered_c = 0;
+
+  for (i = 0; i < el->child_n; ++i)
+    if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH)
+      ++c_count;
+
+  t_width = (maxw - padding - *x - (table_bwidth * c_count)) / c_count;
+  t_height = x_table_approx_height(el, t_width, *y, maxh);
+
+  XftDrawRect(xd, color, *x, *y, maxw - *x - padding, 1);
+  for (i = 0; i < c_count; ++i)
+    XftDrawRect(xd, color, *x + (i * t_width) + table_bwidth, *y, 1, t_height);
+  XftDrawRect(xd, color, *x + (c_count * t_width), *y, 1, t_height);
+
+  for (i = 0; i < el->child_n; ++i) {
+    if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH) {
+      x_recursive_render_text(dpy, xd, color, x, y, &el->child[i],
+          *x + t_width, *y + t_height, 0, 0, NULL);
+
+      ++rendered_c;
+
+      *y = bak_y;
+      *x = bak_x + (rendered_c * t_width);
+    }
+  }
+
+  *y += t_height;
+  *x = padding;
+  XftDrawRect(xd, color, *x, *y, maxw - *x - padding, 1);
+}
+
+static void x_render_table(Display *dpy, XftDraw *xd, XftColor *color, int *x,
+    int *y, HTML_elem *table_root, int maxw, int maxh) {
+  *y += padding;
+  *x = padding;
+  /* x is set here, and at the end of x_render_table_row() */
+
+  int i;
+
+  for (i = 0; i < table_root->child_n; ++i)
+    if (table_root->child[i].t != TABLE_TR)
+      warn("%s: child of table %p at %p is not type TABLE_TR",
+          __FILE__, table_root, &table_root->child[i]);
+    else {
+      x_render_table_row(dpy, xd, color, x, y, &table_root->child[i], maxw,
+        maxh);
+    }
+}
+
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
-    int *x, int *y, HTML_elem *el, int maxw, int maxh, int scroll, 
-    int *curr_scroll) {
+    int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding,
+    int scroll, int *curr_scroll) {
   int i,
       maxlen = (maxw - *x) / fontsz,
       bakx = *x;
@@ -109,21 +194,29 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
   if (maxlen <= 0) {
     *y = *y + fontsz * 2;
-    *x = padding;
+    *x = (use_padding) ? padding : bakx;
     maxlen = (maxw - *x) / fontsz;
     if (maxlen <= 0)
       maxlen = 1;
     /* fuck off */
   }
 
+  if (el->t == TABLE) {
+    x_render_table(dpy, xd, color, x, y, el, maxw, maxh);
+    return;
+  }
+
   if (el->t == PARAGRAPH || el->t == BREAK_LINE) {
     *y = *y + fontsz * 2;
-    *x = padding;
+    *x = (use_padding) ? padding : bakx;
   }
 
   if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
     get_text_attr(el, &at);
+
+    if (at.table > 1)
+      warn("%s: tables in tables not supported!", __FILE__);
 
     draw = el->TT_val;
 
@@ -188,12 +281,12 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
       draw += ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw);
       *y = *y + fontsz * 2;
-      *x = padding;
+      *x = (use_padding) ? padding : bakx;
     }
 
     *y = *y - fontsz * 2;
     if (at.h1 || at.h2 || at.h3 || at.h4 || at.h5 || at.h6)
-      *x = padding;
+      *x = (use_padding) ? padding : bakx;
     else 
       *x = bakx + (strlen(el->TT_val) * fontsz);
 
@@ -202,7 +295,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   } else {
     for (i = 0; i < el->child_n; ++i)
       x_recursive_render_text(dpy, xd, color, x, y, &el->child[i], maxw, maxh,
-          scroll, curr_scroll);
+        use_padding, scroll, curr_scroll);
   }
 }
 
@@ -303,9 +396,9 @@ static void x_render_page(HTML_elem *page) {
 
       time_start = clock();
       x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
-          height, scroll, &cscroll);
+          height, 1, scroll, &cscroll);
       time_end = clock();
-      fprintf(stderr, "%s: x_recursive_render_text() -> took %6.4f\n",
+      warn("%s: x_recursive_render_text() -> took %6.4f",
           __FILE__, (double)(time_end - time_start) / CLOCKS_PER_SEC);
 
 

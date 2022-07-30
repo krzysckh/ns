@@ -84,6 +84,10 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "h5") == 0) ret = H5;
   else if (strcmp(lcase, "h6") == 0) ret = H6;
 
+  else if (strcmp(lcase, "table") == 0) ret = TABLE;
+  else if (strcmp(lcase, "tr") == 0) ret    = TABLE_TR;
+  else if (strcmp(lcase, "td") == 0) ret    = TABLE_TD;
+
   if (*lcase == '/') ret = INTERNAL_BACK;
 
   free(lcase);

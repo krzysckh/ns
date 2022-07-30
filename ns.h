@@ -21,6 +21,11 @@ typedef enum {
   ORDERED_LIST,
   LIST_ELEM,
 
+  TABLE,
+  TABLE_TR,
+  TABLE_TD,
+  TABLE_TH,
+
   UNKNOWN,
 
   TEXT_TYPE,
