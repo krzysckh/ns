@@ -38,23 +38,33 @@ void init_text_attr(Text_attr *attr) {
   attr->h6 = 0;
 
   attr->table = 0;
+
+  attr->paragraph = 0;
 }
 
-void get_text_attr(HTML_elem *el, Text_attr *attr) {
+void get_text_attr(HTML_elem *el, Text_attr *attr, int forwards) {
+  int i;
+
   if (el->t == BOLD) attr->bold = 1;
   if (el->t == ITALIC) attr->italic = 1;
 
-  if (el->t == H1) attr->h1 = 1;
-  if (el->t == H2) attr->h2 = 1;
-  if (el->t == H3) attr->h3 = 1;
-  if (el->t == H4) attr->h4 = 1;
-  if (el->t == H5) attr->h5 = 1;
-  if (el->t == H6) attr->h6 = 1;
+  if (el->t == H1) attr->h1 ++;
+  if (el->t == H2) attr->h2 ++;
+  if (el->t == H3) attr->h3 ++;
+  if (el->t == H4) attr->h4 ++;
+  if (el->t == H5) attr->h5 ++;
+  if (el->t == H6) attr->h6 ++;
 
   if (el->t == TABLE) attr->table++;
 
-  if (el->t != ROOT)
-    get_text_attr(el->parent, attr);
+  if (el->t == PARAGRAPH) attr->paragraph++;
+
+  if (forwards)
+    for (i = 0; i < el->child_n; ++i)
+      get_text_attr(&el->child[i], attr, 1);
+  else
+    if (el->t != ROOT)
+      get_text_attr(el->parent, attr, 0);
 }
 
 void render_page(HTML_elem *page) {
@@ -121,25 +131,47 @@ static int x_get_full_child_text_len(HTML_elem *el) {
       ret += strlen(el->child[i].TT_val);
     else
       ret += x_get_full_child_text_len(&el->child[i]);
+
   return ret;
 }
 
 /* approximates how big should a table row be */
 /* and does a bad job at it :)) */
-static int x_table_approx_height(HTML_elem *el, int width, int x, int maxw) {
+static int x_table_approx_height(HTML_elem *el, int width, int x) {
+  /*return 30;*/
   int i,
-      ret = (2 * fontsz),
-      cur_child_len;
+      ret,
+      cur_child_len,
+      maxlen = 0;
+  Text_attr ta;
 
   for (i = 0; i < el->child_n; ++i) {
     if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH) {
+      ret = (2 * fontsz);
+
+      init_text_attr(&ta);
+      get_text_attr(&el->child[i], &ta, 1);
+
+      ret += (ta.h1 * atoi(h1_sz));
+      ret += (ta.h2 * atoi(h2_sz));
+      ret += (ta.h3 * atoi(h3_sz));
+      ret += (ta.h4 * atoi(h4_sz));
+      ret += (ta.h5 * atoi(h5_sz));
+      ret += (ta.h6 * atoi(h6_sz));
+
+      ret += (ta.paragraph * (fontsz * 2));
+
       cur_child_len = x_get_full_child_text_len(&el->child[i]);
-      while ((maxw - x) / fontsz < cur_child_len) {
+      while ((width - x) / fontsz < cur_child_len) {
         ret += (2*fontsz);
-        cur_child_len -= ((maxw - x) / fontsz);
+        cur_child_len -= ((width - x) / fontsz);
       }
+
+      maxlen = (maxlen > ret) ? maxlen : ret;
     }
   }
+
+  ret = maxlen;
 
   return ret;
 }
@@ -159,7 +191,7 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
       ++c_count;
 
   t_width = (maxw - padding - *x - (table_bwidth * c_count)) / c_count;
-  t_height = x_table_approx_height(el, t_width, *x, maxw);
+  t_height = x_table_approx_height(el, t_width, *x);
 
   XftDrawRect(xd, color, *x, *y, maxw - *x - padding, table_bwidth);
   for (i = 0; i < c_count; ++i)
@@ -168,6 +200,8 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
   XftDrawRect(xd, color, *x + (c_count * t_width), *y, table_bwidth, t_height);
 
   for (i = 0; i < el->child_n; ++i) {
+    *y += fontsz;
+
     if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH) {
       x_recursive_render_text(dpy, xd, color, x, y, &el->child[i],
           *x + t_width, *y + t_height, 0, 0, NULL);
@@ -211,7 +245,6 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   char *draw;
   Text_attr at;
 
-  printf("%d\n", maxlen);
   if (maxlen <= 0) {
     *y = *y + fontsz * 2;
     *x = (use_padding) ? padding : bakx;
@@ -233,7 +266,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
   if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
-    get_text_attr(el, &at);
+    get_text_attr(el, &at, 0);
 
     if (at.table > 1)
       warn("%s: tables in tables not supported!", __FILE__);
@@ -418,7 +451,7 @@ static void x_render_page(HTML_elem *page) {
       x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
           height, 1, scroll, &cscroll);
       time_end = clock();
-      warn("%s: x_recursive_render_text() -> took %6.4f",
+      info("%s: x_recursive_render_text() -> took %6.4f",
           __FILE__, (double)(time_end - time_start) / CLOCKS_PER_SEC);
 
 

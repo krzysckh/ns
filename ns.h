@@ -52,4 +52,5 @@ void render_page(HTML_elem *page);
 
 void err(char *fmt, ...);
 void warn(char *fmt, ...);
+void info(char *fmt, ...);
 
