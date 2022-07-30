@@ -64,17 +64,17 @@ void render_page(HTML_elem *page) {
 #ifdef USE_X
 
 #define font_t "Dejavu Sans Mono"
-#define fontname_n "DejaVu Sans Mono:size=8:antialias=true"
-#define fontname_b "DejaVu Sans Mono:size=8:antialias=true:style=bold"
-#define fontname_i "DejaVu Serif:size=8:antialias=true:style=Italic:hinting=true"
-#define fontsz 8
+#define fontname_n "DejaVu Sans Mono:pixelsize=15:antialias=true"
+#define fontname_b "DejaVu Sans Mono:pixelsize=15:antialias=true:style=bold"
+#define fontname_i "DejaVu Serif:pixelsize=15:antialias=true:style=Italic:hinting=true"
+#define fontsz 15
 
-#define h1_sz "20"
-#define h2_sz "15"
-#define h3_sz "10"
-#define h4_sz "8"
-#define h5_sz "6"
-#define h6_sz "4"
+#define h1_sz "40"
+#define h2_sz "30"
+#define h3_sz "25"
+#define h4_sz "16"
+#define h5_sz "13"
+#define h6_sz "9"
 
 #define padding 10
 
@@ -112,18 +112,36 @@ static void x_load_render_destroy(const char *fontn, const char *txt,
   XftColorFree(dpy, DefaultVisual(dpy, s), DefaultColormap(dpy, s), &c);
 }
 
+/* needed for x_table_approx_height */
+static int x_get_full_child_text_len(HTML_elem *el) {
+  int ret = 0,
+      i;
+  for (i = 0; i < el->child_n; ++i)
+    if (el->child[i].t == TEXT_TYPE)
+      ret += strlen(el->child[i].TT_val);
+    else
+      ret += x_get_full_child_text_len(&el->child[i]);
+  return ret;
+}
+
 /* approximates how big should a table row be */
 /* and does a bad job at it :)) */
-static int x_table_approx_height(HTML_elem *el, int width, int y, int maxh) {
+static int x_table_approx_height(HTML_elem *el, int width, int x, int maxw) {
   int i,
-      tr_ct = 0;
+      ret = (2 * fontsz),
+      cur_child_len;
 
-  for (i = 0; i < el->parent->child_n; ++i)
-    if (el->parent->child[i].t == TABLE_TR)
-      ++tr_ct;
+  for (i = 0; i < el->child_n; ++i) {
+    if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH) {
+      cur_child_len = x_get_full_child_text_len(&el->child[i]);
+      while ((maxw - x) / fontsz < cur_child_len) {
+        ret += (2*fontsz);
+        cur_child_len -= ((maxw - x) / fontsz);
+      }
+    }
+  }
 
-  return ((maxh - padding - (tr_ct * table_bwidth)) / tr_ct) / 2;
-  /* just pure randomness */
+  return ret;
 }
 
 static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
@@ -141,12 +159,13 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
       ++c_count;
 
   t_width = (maxw - padding - *x - (table_bwidth * c_count)) / c_count;
-  t_height = x_table_approx_height(el, t_width, *y, maxh);
+  t_height = x_table_approx_height(el, t_width, *x, maxw);
 
-  XftDrawRect(xd, color, *x, *y, maxw - *x - padding, 1);
+  XftDrawRect(xd, color, *x, *y, maxw - *x - padding, table_bwidth);
   for (i = 0; i < c_count; ++i)
-    XftDrawRect(xd, color, *x + (i * t_width) + table_bwidth, *y, 1, t_height);
-  XftDrawRect(xd, color, *x + (c_count * t_width), *y, 1, t_height);
+    XftDrawRect(xd, color, *x + (i * t_width) + table_bwidth, *y, table_bwidth,
+        t_height);
+  XftDrawRect(xd, color, *x + (c_count * t_width), *y, table_bwidth, t_height);
 
   for (i = 0; i < el->child_n; ++i) {
     if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH) {
@@ -162,7 +181,7 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
 
   *y += t_height;
   *x = padding;
-  XftDrawRect(xd, color, *x, *y, maxw - *x - padding, 1);
+  XftDrawRect(xd, color, *x, *y, maxw - *x - padding, table_bwidth);
 }
 
 static void x_render_table(Display *dpy, XftDraw *xd, XftColor *color, int *x,
@@ -192,6 +211,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   char *draw;
   Text_attr at;
 
+  printf("%d\n", maxlen);
   if (maxlen <= 0) {
     *y = *y + fontsz * 2;
     *x = (use_padding) ? padding : bakx;
@@ -239,41 +259,41 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
         XftDrawStringUtf8(xd, color, font_i, *x, *y, (const FcChar8*)draw,
             ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw));
       else if (at.h1) {
-        *y = *y + (2*atoi(h1_sz));
-        x_load_render_destroy(font_t":size="h1_sz":style=bold", draw,
+        *y = *y + atoi(h1_sz);
+        x_load_render_destroy(font_t":pixelsize="h1_sz":style=bold", draw,
             "#000000", *x, *y,
           ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
-        *y = *y + (2*atoi(h1_sz));
+        *y = *y + atoi(h1_sz);
       } else if (at.h2) {
-        *y = *y + (2*atoi(h2_sz));
-        x_load_render_destroy(font_t":size="h2_sz":style=bold", draw,
+        *y = *y + atoi(h2_sz);
+        x_load_render_destroy(font_t":pixelsize="h2_sz":style=bold", draw,
             "#000000", *x, *y,
           ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
-        *y = *y + (2*atoi(h2_sz));
+        *y = *y + atoi(h2_sz);
       } else if (at.h3) {
-        *y = *y + (2*atoi(h3_sz));
-        x_load_render_destroy(font_t":size="h3_sz":style=bold", draw,
+        *y = *y + atoi(h3_sz);
+        x_load_render_destroy(font_t":pixelsize="h3_sz":style=bold", draw,
             "#000000", *x, *y,
           ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
-        *y = *y + (2*atoi(h3_sz));
+        *y = *y + atoi(h3_sz);
       } else if (at.h4) {
-        *y = *y + (2*atoi(h4_sz));
-        x_load_render_destroy(font_t":size="h4_sz":style=bold", draw,
+        *y = *y + atoi(h4_sz);
+        x_load_render_destroy(font_t":pixelsize="h4_sz":style=bold", draw,
             "#000000", *x, *y,
           ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
-        *y = *y + (2*atoi(h4_sz));
+        *y = *y + atoi(h4_sz);
       } else if (at.h5) {
-        *y = *y + (2*atoi(h5_sz));
-        x_load_render_destroy(font_t":size="h5_sz":style=bold", draw,
+        *y = *y + atoi(h5_sz);
+        x_load_render_destroy(font_t":pixelsize="h5_sz":style=bold", draw,
             "#000000", *x, *y,
           ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
-        *y = *y + (2*atoi(h5_sz));
+        *y = *y + atoi(h5_sz);
       } else if (at.h6) {
-        *y = *y + (2*atoi(h6_sz));
-        x_load_render_destroy(font_t":size="h6_sz":style=bold", draw,
+        *y = *y + atoi(h6_sz);
+        x_load_render_destroy(font_t":pixelsize="h6_sz":style=bold", draw,
             "#000000", *x, *y,
           ((int)strlen(draw) > maxlen) ? maxlen : strlen(draw), dpy, xd);
-        *y = *y + (2*atoi(h6_sz));
+        *y = *y + atoi(h6_sz);
       }
       else
         XftDrawStringUtf8(xd, color, font_n, *x, *y, (const FcChar8*)draw,
@@ -288,7 +308,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     if (at.h1 || at.h2 || at.h3 || at.h4 || at.h5 || at.h6)
       *x = (use_padding) ? padding : bakx;
     else 
-      *x = bakx + (strlen(el->TT_val) * fontsz);
+      *x = bakx + (strlen(el->TT_val) * (fontsz * 2));
 
     /*XDrawString(d, w, DefaultGC(d, s), *x, *y, el->TT_val,*/
           /*strlen(el->TT_val));*/
