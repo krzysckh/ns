@@ -40,22 +40,28 @@ const char *elemt_to_str(HTML_elem_type t) {
   return NULL;
 }
 
-static void html_print_tree(HTML_elem *el, int depth) {
+void html_print_tree(HTML_elem *el, int depth, FILE *outf) {
   int i;
 
-  for (i = 0; i < depth; ++i)
-    printf("  ");
+  if (depth == 0 && (outf == stdout || outf == stderr))
+    info("%s: html tree dump:", __FILE__);
 
-  printf("type %d, children: %d, addr: %p, parent: %p\n", el->t, el->child_n,
-      el, el->parent);
+  for (i = 0; i < depth; ++i)
+    fprintf(outf, "  ");
+
+  fprintf(outf, "type %s, children: %d, addr: %p, parent: %p\n",
+      elemt_to_str(el->t), el->child_n, el, el->parent);
   if (el->t == TEXT_TYPE) {
     for (i = 0; i < 1 + depth; ++i)
-      printf("  ");
-    printf("text: %s\n", el->TT_val);
+      fprintf(outf, "  ");
+    fprintf(outf, "text: %s\n", el->TT_val);
   }
 
   for (i = 0; i < el->child_n; ++i)
-    html_print_tree(&el->child[i], depth + 1);
+    html_print_tree(&el->child[i], depth + 1, outf);
+
+  if (depth == 0 && (outf == stdout || outf == stderr))
+    info("%s: end html tree dump", __FILE__);
 }
 
 void init_HTML_elem(HTML_elem *el, HTML_elem *parent) {
@@ -205,7 +211,8 @@ HTML_elem *create_HTML_tree(FILE *fp) {
 
       while (*text && *text++ != '<')
         ++tt_sz;
-      --text;
+      if (*text)
+        --text;
 
       cur->TT_val = malloc(tt_sz + 1);
       if (tt_sz <= 0) {
@@ -220,7 +227,7 @@ HTML_elem *create_HTML_tree(FILE *fp) {
   }
 
   fucking_update_tt_parentship(ret);
-  html_print_tree(ret, 0);
+  /*html_print_tree(ret, 0, stdout);*/
 
   if (cur != ret)
     warn("%s: your html is bad: cur != ret (%p != %p)", __FILE__,

@@ -51,6 +51,7 @@ typedef struct HTML_elem {
 void free_HTML_elem(HTML_elem *el);
 HTML_elem *create_HTML_tree(FILE *fp);
 void render_page(HTML_elem *page);
+void html_print_tree(HTML_elem *el, int depth, FILE *outf);
 
 const char *elemt_to_str(HTML_elem_type t);
 

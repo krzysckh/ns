@@ -268,7 +268,6 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     x_render_table(dpy, xd, color, x, y, el, maxw, maxh);
     return;
   } else if (el->t == LIST_ELEM) {
-    warn("???");
     if (el->parent->t != ORDERED_LIST && el->parent->t != UNORDERED_LIST) {
       warn("%s: parent of %p (%p = %s) is neither ORDERED_LIST nor "
           "UNORDERED_LIST -- ignoring this branch", __FILE__, el,
@@ -505,6 +504,9 @@ static void x_render_page(HTML_elem *page) {
         case XK_j:
           --scroll;
           force_expose = 1;
+          break;
+        case XK_d:
+          html_print_tree(page, 0, stdout);
           break;
       }
     } else if (ev.type == ButtonPress) {
