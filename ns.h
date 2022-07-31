@@ -9,6 +9,8 @@ typedef enum {
   BOLD,
   ITALIC,
   BREAK_LINE,
+  
+  A,
 
   H1,
   H2,
@@ -36,7 +38,7 @@ typedef enum {
 typedef struct HTML_elem {
   HTML_elem_type t;
   int argc;
-  char **argv;
+  char *(*argv[2]);
 
   int child_n;
   struct HTML_elem *child;
@@ -49,6 +51,8 @@ typedef struct HTML_elem {
 void free_HTML_elem(HTML_elem *el);
 HTML_elem *create_HTML_tree(FILE *fp);
 void render_page(HTML_elem *page);
+
+const char *elemt_to_str(HTML_elem_type t);
 
 void err(char *fmt, ...);
 void warn(char *fmt, ...);

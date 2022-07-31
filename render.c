@@ -267,9 +267,15 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   if (el->t == TABLE) {
     x_render_table(dpy, xd, color, x, y, el, maxw, maxh);
     return;
-  }
-
-  if (el->t == PARAGRAPH 
+  } else if (el->t == LIST_ELEM) {
+    warn("???");
+    if (el->parent->t != ORDERED_LIST && el->parent->t != UNORDERED_LIST) {
+      warn("%s: parent of %p (%p = %s) is neither ORDERED_LIST nor "
+          "UNORDERED_LIST -- ignoring this branch", __FILE__, el,
+          el->parent, elemt_to_str(el->parent->t));
+      return ;
+    }
+  } else if (el->t == PARAGRAPH 
       || el->t == BREAK_LINE
       || el->t == H1
       || el->t == H2
@@ -281,9 +287,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     if (use_padding)
       *y = *y + (fontsz * 2);
     *x = (use_padding) ? padding : fuck_you_this_is_bak_x;
-  }
-
-  if (el->t == TEXT_TYPE) {
+  } else if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
     get_text_attr(el, &at, 0);
 
@@ -373,7 +377,8 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
     /*XDrawString(d, w, DefaultGC(d, s), *x, *y, el->TT_val,*/
           /*strlen(el->TT_val));*/
-  } else {
+  } 
+  if (el->t != TEXT_TYPE) {
     for (i = 0; i < el->child_n; ++i)
       x_recursive_render_text(dpy, xd, color, x, y, &el->child[i], maxw, maxh,
         use_padding);

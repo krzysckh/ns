@@ -6,6 +6,40 @@
 #include <ctype.h>
 #include <time.h>
 
+const char *elemt_to_str(HTML_elem_type t) {
+  switch (t) {
+    case ROOT: return "root";
+    case HTML: return "html";
+    case HEAD: return "head";
+    case BODY: return "body";
+    case PARAGRAPH: return "paragraph";
+    case BOLD: return "bold";
+    case ITALIC: return "italic";
+    case BREAK_LINE: return "break_line";
+    case A: return "a";
+    case H1: return "h1";
+    case H2: return "h2";
+    case H3: return "h3";
+    case H4: return "h4";
+    case H5: return "h5";
+    case H6: return "h6";
+    case UNORDERED_LIST: return "unordered_list";
+    case ORDERED_LIST: return "ordered_list";
+    case LIST_ELEM: return "list_elem";
+    case TABLE: return "table";
+    case TABLE_TR: return "table_tr";
+    case TABLE_TD: return "table_td";
+    case TABLE_TH: return "table_th";
+    case UNKNOWN: return "unknown";
+    case TEXT_TYPE: return "text_type";
+    case INTERNAL_BACK: return NULL;
+  }
+
+  err("%s: elem_to_str(): unhandled HTML_elem_type (%d)", __FILE__, t);
+  /* unreachable */
+  return NULL;
+}
+
 static void html_print_tree(HTML_elem *el, int depth) {
   int i;
 
@@ -72,11 +106,13 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "body") == 0) ret = BODY;
   else if (strcmp(lcase, "p") == 0) ret = PARAGRAPH;
   else if (strcmp(lcase, "b") == 0) ret = BOLD;
+  else if (strcmp(lcase, "strong") == 0) ret = BOLD;
   else if (strcmp(lcase, "i") == 0) ret = ITALIC;
   else if (strcmp(lcase, "br") == 0) ret = BREAK_LINE;
   else if (strcmp(lcase, "ol") == 0) ret = UNORDERED_LIST;
   else if (strcmp(lcase, "ul") == 0) ret = ORDERED_LIST;
   else if (strcmp(lcase, "li") == 0) ret = LIST_ELEM;
+  else if (strcmp(lcase, "a") == 0) ret = A;
 
   else if (strcmp(lcase, "h1") == 0) ret = H1;
   else if (strcmp(lcase, "h2") == 0) ret = H2;
