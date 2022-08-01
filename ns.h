@@ -28,6 +28,8 @@ typedef enum {
   TABLE_TD,
   TABLE_TH,
 
+  IMAGE,
+
   UNKNOWN,
 
   TEXT_TYPE,

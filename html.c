@@ -30,6 +30,7 @@ const char *elemt_to_str(HTML_elem_type t) {
     case TABLE_TR: return "table_tr";
     case TABLE_TD: return "table_td";
     case TABLE_TH: return "table_th";
+    case IMAGE: return "image";
     case UNKNOWN: return "unknown";
     case TEXT_TYPE: return "text_type";
     case INTERNAL_BACK: return NULL;
@@ -131,6 +132,8 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "tr") == 0) ret    = TABLE_TR;
   else if (strcmp(lcase, "td") == 0) ret    = TABLE_TD;
 
+  else if (strcmp(lcase, "img") == 0) ret = IMAGE;
+
   if (*lcase == '/') ret = INTERNAL_BACK;
 
   free(lcase);
@@ -159,7 +162,8 @@ HTML_elem *create_HTML_tree(FILE *fp) {
   char *text,
        *text_orig_p;
   int text_sz,
-      tt_sz;
+      tt_sz,
+      i;
   HTML_elem_type tmp_t;
 
   fseek(fp, 0, SEEK_END);
@@ -184,8 +188,8 @@ HTML_elem *create_HTML_tree(FILE *fp) {
         cur = cur->parent;
       } else {
         /*printf("text - 2 = %s\n", text-2);*/
-        if (*(text-2) == '/') {
-          puts("giga kutas");
+        if (*(text-2) == '/' || tmp_t == IMAGE || tmp_t == BREAK_LINE) {
+          /*info("giga kutas");*/
           cur->child_n++;
           cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
           init_HTML_elem(&cur->child[cur->child_n-1], cur);
@@ -222,6 +226,12 @@ HTML_elem *create_HTML_tree(FILE *fp) {
         strncpy(cur->TT_val, text-tt_sz, tt_sz);
         cur->TT_val[tt_sz] = 0;
       }
+
+      for (i = 0; i < tt_sz; ++i)
+        if (cur->TT_val[i] == '\n')
+          cur->TT_val[i] = ' ';
+        
+
       cur = cur->parent;
     }
   }
