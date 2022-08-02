@@ -327,6 +327,8 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     if (use_padding)
       *y = *y + (fontsz * 2);
     *x = (use_padding) ? padding : fuck_you_this_is_bak_x;
+  } else if (el->t == STYLE) {
+    return;
   } else if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
     get_text_attr(el, &at, 0);

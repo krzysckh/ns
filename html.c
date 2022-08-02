@@ -31,6 +31,7 @@ const char *elemt_to_str(HTML_elem_type t) {
     case TABLE_TD: return "table_td";
     case TABLE_TH: return "table_th";
     case IMAGE: return "image";
+    case STYLE: return "style";
     case UNKNOWN: return "unknown";
     case TEXT_TYPE: return "text_type";
     case INTERNAL_BACK: return NULL;
