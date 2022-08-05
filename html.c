@@ -32,6 +32,7 @@ const char *elemt_to_str(HTML_elem_type t) {
     case TABLE_TH: return "table_th";
     case IMAGE: return "image";
     case STYLE: return "style";
+    case SCRIPT: return "script";
     case UNKNOWN: return "unknown";
     case TEXT_TYPE: return "text_type";
     case INTERNAL_BACK: return NULL;
@@ -134,6 +135,9 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "td") == 0) ret    = TABLE_TD;
 
   else if (strcmp(lcase, "img") == 0) ret = IMAGE;
+
+  else if (strcmp(lcase, "style") == 0) ret = STYLE;
+  else if (strcmp(lcase, "script") == 0) ret = SCRIPT;
 
   if (*lcase == '/') ret = INTERNAL_BACK;
 

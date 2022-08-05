@@ -236,6 +236,13 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
     if (el->child[i].t == TABLE_TD || el->child[i].t == TABLE_TH)
       ++c_count;
 
+  if (c_count == 0) {
+    warn("%s: x_render_table_row(): c_count = 0 - no children of table %p",
+        __FILE__, el->parent);
+    return;
+  }
+
+
   t_width = (maxw - padding - *x - (table_bwidth * c_count)) / c_count;
   t_height = x_table_approx_height(el, t_width, *x);
 
@@ -327,7 +334,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     if (use_padding)
       *y = *y + (fontsz * 2);
     *x = (use_padding) ? padding : fuck_you_this_is_bak_x;
-  } else if (el->t == STYLE) {
+  } else if (el->t == STYLE || el->t == SCRIPT) {
     return;
   } else if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
@@ -549,6 +556,10 @@ static void x_render_page(HTML_elem *page) {
           break;
         case XK_j:
           --scroll;
+          force_expose = 1;
+          break;
+        case XK_space:
+          scroll -= 10;
           force_expose = 1;
           break;
         case XK_d:

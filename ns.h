@@ -31,6 +31,7 @@ typedef enum {
   IMAGE,
 
   STYLE,
+  SCRIPT, 
 
   UNKNOWN,
 
