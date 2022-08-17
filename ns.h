@@ -42,6 +42,33 @@ typedef enum {
   INTERNAL_BACK,
 } HTML_elem_type;
 
+typedef enum {
+  BACKGROUND_COLOR,
+  COLOR,
+  FONTSIZE,
+  FONT_FAMILY,
+  CSS_UNKNOWN
+} CSS_otype;
+
+typedef enum {
+  M_INCH,
+  M_PIXEL,
+  M_PERCENT,
+  M_COLOR,
+  M_STRING
+} CSS_metric;
+
+typedef struct CSS_opt {
+  CSS_otype t;
+  int *value;
+  CSS_metric m;
+} CSS_opt;
+
+typedef struct Calculated_CSS {
+  CSS_opt *o;
+  int o_n;
+} Calculated_CSS;
+
 typedef struct HTML_elem {
   HTML_elem_type t;
   int argc;
@@ -53,12 +80,18 @@ typedef struct HTML_elem {
 
   char *TT_val;
   /* value if TEXT_TYPE */
+
+  Calculated_CSS css;
 } HTML_elem;
 
 void free_HTML_elem(HTML_elem *el);
 HTML_elem *create_HTML_tree(FILE *fp);
 void render_page(HTML_elem *page);
 void html_print_tree(HTML_elem *el, int depth, FILE *outf);
+void cpt_to_lower(char *from, char *to, int l);
+HTML_elem_type get_elem_type(char *text);
+
+void calculate_css(HTML_elem *el);
 
 const char *elemt_to_str(HTML_elem_type t);
 

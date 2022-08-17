@@ -77,10 +77,13 @@ void html_print_tree(HTML_elem *el, int depth, FILE *outf) {
 void init_HTML_elem(HTML_elem *el, HTML_elem *parent) {
   el->t = -1;
   el->argc = 0;
+  el->argv = NULL;
   el->child_n = 0;
   el->child = NULL;
   el->parent = parent;
   el->TT_val = NULL;
+  el->css.o = NULL;
+  /*el->css.o->value = NULL;*/
 }
 
 void free_HTML_elem(HTML_elem *el) {
@@ -89,24 +92,32 @@ void free_HTML_elem(HTML_elem *el) {
   if (el->TT_val != NULL)
     free(el->TT_val);
 
-  for (j = 0; j < el->argc; ++j)
-    free(el->argv[j]);
+  for (j = 0; j < el->argc; ++j) {
+    free(el->argv[j][0]);
+    free(el->argv[j][1]);
+  }
 
   for (i = 0; i < el->child_n; ++i)
     free_HTML_elem(&el->child[i]);
 }
 
-static void cpt_to_lower(char *from, char *to, int l) {
+void cpt_to_lower(char *from, char *to, int l) {
   while (l--)
     *to++ = tolower(*from++);
 }
 
-static HTML_elem_type get_elem_type(char *text) {
+HTML_elem_type get_elem_type(char *text) {
   HTML_elem_type ret = UNKNOWN;
   int name_sz = 0;
   char *lcase;
 
-  while (!iswspace(*text) && *text != '>') {
+  /* the last one for css.c */
+  while (!iswspace(*text) && *text != '>' && *text != '{') {
+    if (!*text) {
+      warn("%s: html/css ends prematurely (near %s)", __FILE__,
+          text-5);
+      break;
+    }
     ++name_sz;
     ++text;
   }
@@ -115,11 +126,10 @@ static HTML_elem_type get_elem_type(char *text) {
   lcase[name_sz] = 0;
   cpt_to_lower(text - name_sz, lcase, name_sz);
 
-  /*printf("lcase = %s\n", lcase);*/
-
   if (strcmp(lcase, "html") == 0) ret = HTML;
   else if (strcmp(lcase, "head") == 0) ret = HEAD;
   else if (strcmp(lcase, "body") == 0) ret = BODY;
+  else if (strcmp(lcase, "style") == 0) ret = STYLE;
   else if (strcmp(lcase, "p") == 0) ret = PARAGRAPH;
   else if (strcmp(lcase, "b") == 0) ret = BOLD;
   else if (strcmp(lcase, "strong") == 0) ret = BOLD;
@@ -229,7 +239,6 @@ void get_elem_args(HTML_elem *el, char *t) {
         goto s_argv;
       }
     } else if (iswspace(*t) || *t == '>') {
-      warn("%d", len);
       goto s_argv;
     }
 
@@ -257,7 +266,8 @@ HTML_elem *create_HTML_tree(FILE *fp) {
   ret->t = ROOT;
 
   char *text,
-       *text_orig_p;
+       *text_orig_p,
+       *bak_text;
   int text_sz,
       tt_sz,
       i;
@@ -279,6 +289,10 @@ HTML_elem *create_HTML_tree(FILE *fp) {
     if (*text == '<') {
       ++text;
       tmp_t = get_elem_type(text);
+      bak_text = text;
+
+      while (*text++ != '>')
+        ;
       if (tmp_t == INTERNAL_BACK) {
         cur = cur->parent;
       } else {
@@ -291,7 +305,7 @@ HTML_elem *create_HTML_tree(FILE *fp) {
           init_HTML_elem(&cur->child[cur->child_n-1], cur);
           cur->child[cur->child_n-1].t = tmp_t;
 
-          get_elem_args(&cur->child[cur->child_n-1], text);
+          get_elem_args(&cur->child[cur->child_n-1], bak_text);
         } else {
           cur->child_n++;
           cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
@@ -299,12 +313,9 @@ HTML_elem *create_HTML_tree(FILE *fp) {
 
           cur = &cur->child[cur->child_n-1];
           cur->t = tmp_t;
-          get_elem_args(cur, text);
+          get_elem_args(cur, bak_text);
         }
       }
-
-      while (*text++ != '>')
-        ;
     } else {
       tt_sz = 0;
 

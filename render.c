@@ -310,6 +310,8 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   char *draw;
   Text_attr at;
 
+  calculate_css(el);
+
   if (el->t == TABLE) {
     x_render_table(dpy, xd, color, x, y, el, maxw, maxh);
     return;
