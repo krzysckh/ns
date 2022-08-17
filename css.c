@@ -117,6 +117,7 @@ void calculate_css(HTML_elem *el) {
 
   if (el->css.o != NULL) free_css(&el->css);
   el->css.o = 0;
+  el->css.o_n = 0;
 
   if (el->t != ROOT)
     calculate_css(el->parent);
