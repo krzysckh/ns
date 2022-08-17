@@ -33,18 +33,20 @@ const char *elemt_to_str(HTML_elem_type t) {
     case IMAGE: return "image";
     case STYLE: return "style";
     case SCRIPT: return "script";
+    case META: return "meta";
     case UNKNOWN: return "unknown";
     case TEXT_TYPE: return "text_type";
     case INTERNAL_BACK: return NULL;
   }
 
-  err("%s: elem_to_str(): unhandled HTML_elem_type (%d)", __FILE__, t);
+  err("%s: elemt_to_str(): unhandled HTML_elem_type (%d)", __FILE__, t);
   /* unreachable */
   return NULL;
 }
 
 void html_print_tree(HTML_elem *el, int depth, FILE *outf) {
-  int i;
+  int i,
+      j;
 
   if (depth == 0 && (outf == stdout || outf == stderr))
     info("%s: html tree dump:", __FILE__);
@@ -54,6 +56,11 @@ void html_print_tree(HTML_elem *el, int depth, FILE *outf) {
 
   fprintf(outf, "type %s, children: %d, addr: %p, parent: %p\n",
       elemt_to_str(el->t), el->child_n, el, el->parent);
+  for (i = 0; i < el->argc; ++i) {
+    for (j = 0; j < depth; ++j)
+      fprintf(outf, "  ");
+    fprintf(outf, "arg (%d) %s = %s\n", i, el->argv[i][0], el->argv[i][1]);
+  }
   if (el->t == TEXT_TYPE) {
     for (i = 0; i < 1 + depth; ++i)
       fprintf(outf, "  ");
@@ -139,6 +146,8 @@ static HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "style") == 0) ret = STYLE;
   else if (strcmp(lcase, "script") == 0) ret = SCRIPT;
 
+  else if (strcmp(lcase, "meta") == 0) ret = META;
+
   if (*lcase == '/') ret = INTERNAL_BACK;
 
   free(lcase);
@@ -152,6 +161,89 @@ static void fucking_update_tt_parentship(HTML_elem *root) {
   }
   for (i = 0; i < root->child_n; ++i) {
     fucking_update_tt_parentship(&root->child[i]);
+  }
+}
+
+void get_elem_args(HTML_elem *el, char *t) {
+  int len,
+      usequot;
+
+  while (!iswspace(*t++)) {
+    if (*t == '>') return;
+  }
+
+  while (1) {
+  while (iswspace(*t)) ++t;
+
+  len = 0;
+  usequot = 0;
+  while (*t != '=') {
+    if (*t == '/') return;
+
+    if (*t == '>' || iswspace(*t)) {
+      if (*t == '>' && !len) return;
+      el->argv = realloc(el->argv, (el->argc+1) * sizeof(char**));
+      el->argv[el->argc] = malloc(2 * sizeof(char*));
+      el->argv[el->argc][0] = malloc(len + 1);
+      strncpy(el->argv[el->argc][0], t-len, len);
+      el->argv[el->argc][0][len] = 0;
+
+      el->argv[el->argc][1] = malloc(5);
+      strcpy(el->argv[el->argc][1], "true");
+      el->argv[el->argc][1][4] = 0;
+
+      el->argc++;
+
+      if (*t == '>') return;
+
+      t++;
+      len = 0;
+    }
+
+    t++;
+    ++len;
+  }
+
+  el->argv = realloc(el->argv, (el->argc+1) * sizeof(char**));
+  el->argv[el->argc] = malloc(2 * sizeof(char*));
+  el->argv[el->argc][0] = malloc(len + 1);
+  strncpy(el->argv[el->argc][0], t-len, len);
+  el->argv[el->argc][0][len] = 0;
+
+  if (*++t == '"')
+    usequot = 1;
+  else {
+    info("%s: wouldn't say your html is wrong, but it isn't pretty.", __FILE__);
+    info("    at elem %p (%s)", el, elemt_to_str(el->t));
+  }
+
+  ++t;
+
+  len = 0;
+  while (1) {
+    if (!*t)
+      err("%s: html err: found EOF while string from el %p (%s) is still open",
+          __FILE__, el, elemt_to_str(el->t));
+    if (usequot) {
+      if (*t == '"' && *(t-1) != '\\') {
+        goto s_argv;
+      }
+    } else if (iswspace(*t)) {
+      goto s_argv;
+    }
+
+    len++;
+    t++;
+    continue;
+s_argv:
+    el->argv[el->argc][1] = malloc(len+1);
+    strncpy(el->argv[el->argc][1], t-len, len);
+    el->argv[el->argc][1][len] = 0;
+    warn("%d", len);
+    el->argc++;
+    break;
+  }
+  t++;
   }
 }
 
@@ -187,18 +279,19 @@ HTML_elem *create_HTML_tree(FILE *fp) {
     if (*text == '<') {
       ++text;
       tmp_t = get_elem_type(text);
-      while (*text++ != '>')
-        ;
       if (tmp_t == INTERNAL_BACK) {
         cur = cur->parent;
       } else {
         /*printf("text - 2 = %s\n", text-2);*/
-        if (*(text-2) == '/' || tmp_t == IMAGE || tmp_t == BREAK_LINE) {
+        if (*(text-2) == '/' || tmp_t == IMAGE || tmp_t == BREAK_LINE 
+            || tmp_t == META) {
           /*info("giga kutas");*/
           cur->child_n++;
           cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
           init_HTML_elem(&cur->child[cur->child_n-1], cur);
           cur->child[cur->child_n-1].t = tmp_t;
+
+          get_elem_args(&cur->child[cur->child_n-1], text);
         } else {
           cur->child_n++;
           cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
@@ -206,8 +299,12 @@ HTML_elem *create_HTML_tree(FILE *fp) {
 
           cur = &cur->child[cur->child_n-1];
           cur->t = tmp_t;
+          get_elem_args(cur, text);
         }
       }
+
+      while (*text++ != '>')
+        ;
     } else {
       tt_sz = 0;
 

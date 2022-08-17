@@ -33,6 +33,8 @@ typedef enum {
   STYLE,
   SCRIPT, 
 
+  META,
+
   UNKNOWN,
 
   TEXT_TYPE,
@@ -43,7 +45,7 @@ typedef enum {
 typedef struct HTML_elem {
   HTML_elem_type t;
   int argc;
-  char *(*argv[2]);
+  char ***argv;
 
   int child_n;
   struct HTML_elem *child;
