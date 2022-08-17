@@ -179,9 +179,10 @@ void get_elem_args(HTML_elem *el, char *t) {
   usequot = 0;
   while (*t != '=') {
     if (*t == '/') return;
+    if (*t == '>') return;
 
     if (*t == '>' || iswspace(*t)) {
-      if (*t == '>' && !len) return;
+      /*if (*t == '>' && !len) return;*/
       el->argv = realloc(el->argv, (el->argc+1) * sizeof(char**));
       el->argv[el->argc] = malloc(2 * sizeof(char*));
       el->argv[el->argc][0] = malloc(len + 1);
@@ -210,14 +211,13 @@ void get_elem_args(HTML_elem *el, char *t) {
   strncpy(el->argv[el->argc][0], t-len, len);
   el->argv[el->argc][0][len] = 0;
 
-  if (*++t == '"')
+  if (*++t == '"') {
     usequot = 1;
-  else {
-    info("%s: wouldn't say your html is wrong, but it isn't pretty.", __FILE__);
-    info("    at elem %p (%s)", el, elemt_to_str(el->t));
+    ++t;
+  } else {
+    warn("%s: wouldn't say your html is wrong, but it isn't pretty.", __FILE__);
+    warn("    at elem %p (%s)", el, elemt_to_str(el->t));
   }
-
-  ++t;
 
   len = 0;
   while (1) {
@@ -228,7 +228,8 @@ void get_elem_args(HTML_elem *el, char *t) {
       if (*t == '"' && *(t-1) != '\\') {
         goto s_argv;
       }
-    } else if (iswspace(*t)) {
+    } else if (iswspace(*t) || *t == '>') {
+      warn("%d", len);
       goto s_argv;
     }
 
@@ -239,7 +240,6 @@ s_argv:
     el->argv[el->argc][1] = malloc(len+1);
     strncpy(el->argv[el->argc][1], t-len, len);
     el->argv[el->argc][1][len] = 0;
-    warn("%d", len);
     el->argc++;
     break;
   }
