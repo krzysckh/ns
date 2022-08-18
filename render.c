@@ -125,6 +125,7 @@ static int x_get_maxlen(int maxw, int *x, int *y, int use_padding, int bakx,
 }
 static void x_load_render_destroy(const char *fontn, const char *txt,
     const char *color, int x, int y, int len, Display *dpy, XftDraw *xd) {
+  warn("KURWA txt = %s", txt);
   int s = DefaultScreen(dpy);
   XftColor c;
 

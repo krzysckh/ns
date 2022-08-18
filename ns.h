@@ -47,7 +47,8 @@ typedef enum {
   COLOR,
   FONTSIZE,
   FONT_FAMILY,
-  CSS_UNKNOWN
+  CSS_UNKNOWN,
+  CSS_NEXT_SELECTOR
 } CSS_otype;
 
 typedef enum {
@@ -60,7 +61,7 @@ typedef enum {
 
 typedef struct CSS_opt {
   CSS_otype t;
-  int *value;
+  int *v;
   CSS_metric m;
 } CSS_opt;
 

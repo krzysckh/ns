@@ -1,12 +1,12 @@
 #include "ns.h"
+#include "css_colors.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <wctype.h>
 
 /* update if needed */
-static int total_hours_wasted_here = 2;
-/* 17:40 */
+static int total_hours_wasted_here = 3;
 
 static HTML_elem *get_root_from_elem(HTML_elem *e) {
   return (e->t == ROOT) ? e : get_root_from_elem(e->parent);
@@ -65,19 +65,21 @@ static char *find_styles(HTML_elem *root) {
 void free_css(Calculated_CSS *c) {
   int i;
 
-  for (i = 0; i < c->o_n; ++i);
-    /*if (c->o->value != NULL)*/
-      /*free(c->o->value);*/
+  for (i = 0; i < c->o_n; ++i)
+    if (c->o[i].v != NULL)
+      free(c->o[i].v);
   if (c->o != NULL)
     free(c->o);
 }
 
-CSS_otype get_css_otype(char *s) {
+static CSS_otype get_css_otype(char *s) {
   int len = 0;
   char *lcase;
   CSS_otype ret;
   while (iswspace(*s)) s++;
   while (*s != ':') {
+    if (*s == '}')
+      return CSS_NEXT_SELECTOR;
     if (!*s) {
       warn("%s: css ends prematurely (near %s)", __FILE__, s-5);
       break;
@@ -101,9 +103,71 @@ CSS_otype get_css_otype(char *s) {
   return ret;
 }
 
-char *get_css_val(char *stl) {
+static char *get_css_val(char *stl) {
+  int len = 0;
+  char *ret;
   while (iswspace(*stl))
     stl++;
+  while (*stl != ';') {
+    if (!*stl) {
+      warn("%s: css value ends abruptly (near '%s')", __FILE__, stl-10);
+      return NULL;
+    }
+
+    ++len;
+    ++stl;
+  }
+
+  ret = malloc(len + 1);
+  strncpy(ret, stl-len, len);
+  ret[len] = 0;
+
+  return ret;
+}
+
+static int css_colname_to_int(char *v) {
+  int i,
+      val;
+
+  /* TODO: replace this with binary search */
+  for (i = 0; i < CSS_COLOR_MAP_L; ++i) {
+    if (strcmp(v, CSS_COLOR_MAP[i].n) == 0) {
+      return CSS_COLOR_MAP[i].v;
+    }
+  }
+
+  warn("%s: unknown color '%s'", __FILE__, v);
+  return 0xff00ff;
+}
+
+/* CSS_otype has to be specified in the struct before calling that function */
+static void css_str_to_val_metric(CSS_opt *opt, char *v) {
+  /* put anything color-related here */
+  if (opt->t == COLOR || opt->t == BACKGROUND_COLOR) {
+    opt->m = M_COLOR;
+    switch (*v) {
+      case '#':
+        /* TODO: #nnnnnn -> 0xnnnnnn */
+        opt->v = malloc(sizeof(int));
+        *(opt->v) = 0xff00ff;
+        return;
+        break;
+      case 'r':
+      case 'h':
+        warn("%s: rgb(), rgba(), hsl() not supported", __FILE__);
+        opt->v = malloc(sizeof(int));
+        *(opt->v) = 0xff00ff;
+        return;
+        break;
+      default:
+        opt->v = malloc(sizeof(int));
+        *(opt->v) = css_colname_to_int(v);
+        return;
+        break;
+    }
+  }
+  opt->v = NULL;
+
 }
 
 void calculate_css(HTML_elem *el) {
@@ -116,7 +180,7 @@ void calculate_css(HTML_elem *el) {
   CSS_otype tmp_otype;
 
   if (el->css.o != NULL) free_css(&el->css);
-  el->css.o = 0;
+  el->css.o = NULL;
   el->css.o_n = 0;
 
   if (el->t != ROOT)
@@ -151,7 +215,10 @@ void calculate_css(HTML_elem *el) {
     while (*stl++ != '{')
       ;
 
+next_opt:
     tmp_otype = get_css_otype(stl);
+    if (tmp_otype == CSS_NEXT_SELECTOR)
+      goto next;
     if (tmp_otype == CSS_UNKNOWN) {
       warn("%s: unknown css option near %.5s[...] (elem %p)", __FILE__,
           stl, el);
@@ -162,11 +229,20 @@ void calculate_css(HTML_elem *el) {
       ;
 
     tmp_val = get_css_val(stl);
+    if (tmp_val == NULL)
+      goto next;
+    /* yeahhh man fuckkk that */
 
     el->css.o_n++;
     el->css.o = realloc(el->css.o, el->css.o_n * sizeof(CSS_opt));
     el->css.o[el->css.o_n].t = tmp_otype;
-    el->css.o[el->css.o_n].t = tmp_otype;
+
+    css_str_to_val_metric(&el->css.o[el->css.o_n], tmp_val);
+    free(tmp_val);
+
+    while (*stl++ != ';')
+      if (!*stl) goto end;
+    goto next_opt;
 next:
     while (*stl != '}') {
       if (!*stl)
@@ -176,6 +252,7 @@ next:
     }
     ++stl;
   }
+end:
   free(orig_stl);
 }
 

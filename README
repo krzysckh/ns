@@ -6,6 +6,7 @@ ns - maybe a html only web browser in the far, far future
 files:
  ~> html.c - (wip) html parser
  ~> render.c (wip) {X11(wip),console(in the future)} frontend
+ ~> css.c - No.
  ~> ns.c - main
 
 $ make
