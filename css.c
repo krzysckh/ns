@@ -6,7 +6,7 @@
 #include <wctype.h>
 
 /* update if needed */
-static int total_hours_wasted_here = 3;
+static int total_hours_wasted_here = 4;
 
 static HTML_elem *get_root_from_elem(HTML_elem *e) {
   return (e->t == ROOT) ? e : get_root_from_elem(e->parent);
@@ -66,8 +66,9 @@ void free_css(Calculated_CSS *c) {
   int i;
 
   for (i = 0; i < c->o_n; ++i)
-    if (c->o[i].v != NULL)
+    if (c->o[i].v != NULL) {
       free(c->o[i].v);
+    }
   if (c->o != NULL)
     free(c->o);
 }
@@ -91,7 +92,6 @@ static CSS_otype get_css_otype(char *s) {
   lcase = malloc(len + 1);
   lcase[len] = 0;
   cpt_to_lower(s - len, lcase, len);
-  warn(lcase);
 
   if (strcmp(lcase, "background-color") == 0) ret = BACKGROUND_COLOR;
   else if (strcmp(lcase, "color") == 0) ret = COLOR;
@@ -103,13 +103,15 @@ static CSS_otype get_css_otype(char *s) {
   return ret;
 }
 
-static char *get_css_val(char *stl) {
+static char *get_css_val(char *stl, int isinline) {
   int len = 0;
   char *ret;
   while (iswspace(*stl))
     stl++;
   while (*stl != ';') {
     if (!*stl) {
+      if (isinline)
+        break;
       warn("%s: css value ends abruptly (near '%s')", __FILE__, stl-10);
       return NULL;
     }
@@ -170,9 +172,36 @@ static void css_str_to_val_metric(CSS_opt *opt, char *v) {
 
 }
 
+/* returns a new calculated_css with copied opts :^) */
+Calculated_CSS csscpy(Calculated_CSS *c) {
+  Calculated_CSS ret;
+  int i;
+
+  ret.o_n = c->o_n;
+  ret.o = malloc(sizeof(CSS_opt) * ret.o_n);
+
+  for (i = 0; i < ret.o_n; ++i) {
+    ret.o[i].t = c->o[i].t;
+    ret.o[i].m = c->o[i].m;
+
+    if (ret.o[i].t == M_STRING) {
+      ret.o[i].v = malloc(strlen((char*)c->o[i].v) + 1);
+      strcpy((char*)ret.o[i].v, (char*)c->o[i].v);
+      ret.o[i].v[strlen((char*)c->o[i].v)] = 0;
+    } else {
+      ret.o[i].v = malloc(sizeof(int));
+      *(ret.o[i].v) = *(c->o[i].v);
+    }
+  }
+
+  return ret;
+}
+
 void calculate_css(HTML_elem *el) {
   /* oh it will be inefficient */
-  int i;
+  int i,
+      checked_inline = 0,
+      isinline = 0;
   char *stl,
        *orig_stl,
        *tmp_val;
@@ -216,6 +245,10 @@ void calculate_css(HTML_elem *el) {
       ;
 
 next_opt:
+    if (isinline) {
+      while (iswspace(*stl)) stl++;
+      if (!*stl) goto end;
+    }
     tmp_otype = get_css_otype(stl);
     if (tmp_otype == CSS_NEXT_SELECTOR)
       goto next;
@@ -228,16 +261,17 @@ next_opt:
     while (*stl++ != ':')
       ;
 
-    tmp_val = get_css_val(stl);
+    tmp_val = get_css_val(stl, isinline);
     if (tmp_val == NULL)
       goto next;
     /* yeahhh man fuckkk that */
 
-    el->css.o_n++;
-    el->css.o = realloc(el->css.o, el->css.o_n * sizeof(CSS_opt));
+    el->css.o = realloc(el->css.o, (el->css.o_n + 1) * sizeof(CSS_opt));
     el->css.o[el->css.o_n].t = tmp_otype;
 
     css_str_to_val_metric(&el->css.o[el->css.o_n], tmp_val);
+
+    el->css.o_n++;
     free(tmp_val);
 
     while (*stl++ != ';')
@@ -254,5 +288,23 @@ next:
   }
 end:
   free(orig_stl);
+
+  if (!checked_inline) {
+    for (i = 0; i < el->argc; ++i) {
+      if (strcmp(el->argv[i][0], "style") == 0) {
+        stl = malloc(strlen(el->argv[i][1]) + 1);
+        strcpy(stl, el->argv[i][1]);
+        stl[strlen(el->argv[i][1])] = 0;
+        orig_stl = stl;
+
+        checked_inline = 1;
+        isinline = 1;
+        goto next_opt;
+      }
+    }
+  }
+
+  for (i = 0; i < el->child_n; ++i)
+    el->child[i].css = csscpy(&el->css);
 }
 
