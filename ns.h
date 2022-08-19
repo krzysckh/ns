@@ -63,6 +63,7 @@ typedef enum {
 typedef struct CSS_opt {
   CSS_otype t;
   int *v;
+  char *v_str;
   CSS_metric m;
 } CSS_opt;
 

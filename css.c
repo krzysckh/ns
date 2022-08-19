@@ -12,9 +12,7 @@ static char *PREDEF_CSS = "\
 * {\
   font-family: Comic Sans MS;\
   color: black;\
-}\
-h1 {\
-  font-size: 50px;\
+  background-color: #dedede;\
 }\
 ";
 
@@ -75,9 +73,13 @@ static char *find_styles(HTML_elem *root) {
 void free_css(Calculated_CSS *c) {
   int i;
 
-  for (i = 0; i < c->o_n; ++i)
-    if (c->o[i].v != NULL)
+  for (i = 0; i < c->o_n; ++i) {
+    if (c->o[i].m == M_STRING) {
+      if (c->o[i].v_str != NULL)
+        free(c->o[i].v_str);
+    } else if (c->o[i].v != NULL)
       free(c->o[i].v);
+  }
 
   if (c->o != NULL)
     free(c->o);
@@ -180,13 +182,14 @@ static void css_str_to_val_metric(CSS_opt *opt, char *v) {
   } else if (opt->t == FONT_FAMILY) {
     /* or anything else that requires type M_STRING */
     opt->m = M_STRING;
-    opt->v = malloc(strlen(v) + 1);
-    strcpy((char*)opt->v, v);
-    opt->v[strlen(v)] = 0;
+    opt->v_str = malloc(strlen(v) + 1);
+    strcpy(opt->v_str, v);
+    opt->v_str[strlen(v)] = 0;
     return;
   }
-  opt->v = NULL;
 
+  opt->v = NULL;
+  opt->v_str = NULL;
 }
 
 /* returns a new calculated_css with copied opts :^) */
@@ -202,9 +205,9 @@ Calculated_CSS csscpy(Calculated_CSS *c) {
     ret.o[i].m = c->o[i].m;
 
     if (ret.o[i].m == M_STRING) {
-      ret.o[i].v = malloc(strlen((char*)c->o[i].v) + 1);
-      strcpy((char*)ret.o[i].v, (char*)c->o[i].v);
-      ret.o[i].v[strlen((char*)c->o[i].v)] = 0;
+      ret.o[i].v_str = malloc(strlen(c->o[i].v_str) + 1);
+      strcpy(ret.o[i].v_str, c->o[i].v_str);
+      ret.o[i].v_str[strlen(c->o[i].v_str)] = 0;
     } else {
       ret.o[i].v = malloc(sizeof(int));
       *(ret.o[i].v) = *(c->o[i].v);
@@ -277,7 +280,7 @@ next_opt:
     if (tmp_otype == CSS_UNKNOWN) {
       warn("%s: unknown css option near %.5s[...] (elem %p)", __FILE__,
           stl, el);
-      goto next;
+      goto nextopt_plus_movestl;
     }
 
     while (*stl++ != ':')
@@ -285,7 +288,7 @@ next_opt:
 
     tmp_val = get_css_val(stl, isinline);
     if (tmp_val == NULL)
-      goto next;
+      goto nextopt_plus_movestl;
     /* yeahhh man fuckkk that */
 
     set_me = -1;
@@ -304,6 +307,8 @@ next_opt:
     }
 
     free(tmp_val);
+
+nextopt_plus_movestl:
 
     while (*stl++ != ';')
       if (!*stl) goto end;
