@@ -52,9 +52,12 @@ void info(char *fmt, ...) {
   va_end(vl);
 }
 
-int main (void) {
-  /*FILE *f = download_file("http://9front.org");*/
-  FILE *f = fopen("test.html", "r");
+int main (int argc, char *argv[]) {
+  FILE *f;
+  if (argc > 1)
+    f = download_file(argv[1]);
+  else
+    f = fopen("test.html", "r");
 
   HTML_elem *tree = create_HTML_tree(f);
 

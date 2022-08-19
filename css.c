@@ -268,6 +268,7 @@ void calculate_css(HTML_elem *el) {
 
   orig_stl = stl;
 
+  if (stl == NULL) goto real_end;
   while (*stl) {
     while (iswspace(*stl)) stl++;
     if (!*stl) goto end;
@@ -364,6 +365,7 @@ end:
     }
   }
 
+real_end:
   for (i = 0; i < el->child_n; ++i)
     el->child[i].css = csscpy(&el->css);
 }
