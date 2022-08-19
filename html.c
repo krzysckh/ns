@@ -36,6 +36,7 @@ const char *elemt_to_str(HTML_elem_type t) {
     case META: return "meta";
     case UNKNOWN: return "unknown";
     case TEXT_TYPE: return "text_type";
+    case CSS_ALL_SELECTORS: return "(css) *";
     case INTERNAL_BACK: return NULL;
   }
 
@@ -157,6 +158,20 @@ HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "script") == 0) ret = SCRIPT;
 
   else if (strcmp(lcase, "meta") == 0) ret = META;
+
+  else if (strcmp(lcase, "*") == 0) ret = CSS_ALL_SELECTORS;
+  /* it does not check what the calling function is
+   * so if someone was to specify their html like this:
+   * <body> <*> ooga booga </lmao> </body>
+   * this function _would_ return CSS_ALL_SELECTORS
+   * and world _would_ collapse
+   * :^)
+   *
+   * and that is all not because i "want to keep the code clean"
+   * or "reuse already written code". i'm just lazy.
+   *
+   * it is 3AM in the morning, this is a cry for help.
+   */
 
   if (*lcase == '/') ret = INTERNAL_BACK;
 

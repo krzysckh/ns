@@ -6,7 +6,17 @@
 #include <wctype.h>
 
 /* update if needed */
-static int total_hours_wasted_here = 4;
+static int total_hours_wasted_here = 5;
+
+static char *PREDEF_CSS = "\
+* {\
+  font-family: Comic Sans MS;\
+  color: black;\
+}\
+h1 {\
+  font-size: 50px;\
+}\
+";
 
 static HTML_elem *get_root_from_elem(HTML_elem *e) {
   return (e->t == ROOT) ? e : get_root_from_elem(e->parent);
@@ -67,6 +77,7 @@ void free_css(Calculated_CSS *c) {
 
   for (i = 0; i < c->o_n; ++i)
     if (c->o[i].v != NULL) {
+      warn("freeing %s", c->o[i].v);
       free(c->o[i].v);
     }
   if (c->o != NULL)
@@ -167,6 +178,13 @@ static void css_str_to_val_metric(CSS_opt *opt, char *v) {
         return;
         break;
     }
+  } else if (opt->t == FONT_FAMILY) {
+    /* or anything else that requires type M_STRING */
+    opt->m = M_STRING;
+    opt->v = malloc(strlen(v) + 1);
+    strcpy((char*)opt->v, v);
+    opt->v[strlen(v)] = 0;
+    return;
   }
   opt->v = NULL;
 
@@ -201,7 +219,8 @@ void calculate_css(HTML_elem *el) {
   /* oh it will be inefficient */
   int i,
       checked_inline = 0,
-      isinline = 0;
+      isinline = 0,
+      set_me;
   char *stl,
        *orig_stl,
        *tmp_val;
@@ -214,12 +233,16 @@ void calculate_css(HTML_elem *el) {
 
   if (el->t != ROOT)
     calculate_css(el->parent);
-  
-  stl = find_styles(get_root_from_elem(el));
-  orig_stl = stl;
 
-  if (stl == NULL) return;
-  /*info("stl: %s", stl);*/
+  stl = find_styles(get_root_from_elem(el));
+  stl = realloc(stl, strlen(stl) + strlen(PREDEF_CSS));
+  tmp_val = malloc(strlen(stl) + strlen(PREDEF_CSS) + 1);
+  strcpy(tmp_val, PREDEF_CSS);
+  strcat(tmp_val, stl);
+  strcpy(stl, tmp_val);
+  free(tmp_val);
+
+  orig_stl = stl;
 
   while (*stl) {
     while (iswspace(*stl)) stl++;
@@ -238,7 +261,7 @@ void calculate_css(HTML_elem *el) {
       goto next;
     }
 
-    if (tmp_type != el->t)
+    if (tmp_type != el->t && tmp_type != CSS_ALL_SELECTORS)
       goto next;
 
     while (*stl++ != '{')
@@ -266,12 +289,21 @@ next_opt:
       goto next;
     /* yeahhh man fuckkk that */
 
-    el->css.o = realloc(el->css.o, (el->css.o_n + 1) * sizeof(CSS_opt));
-    el->css.o[el->css.o_n].t = tmp_otype;
+    set_me = -1;
+    for (i = 0; i < el->css.o_n; ++i)
+      if (el->css.o[i].t == tmp_otype)
+        set_me = i;
 
-    css_str_to_val_metric(&el->css.o[el->css.o_n], tmp_val);
+    if (set_me < 0) {
+      el->css.o = realloc(el->css.o, (el->css.o_n + 1) * sizeof(CSS_opt));
+      el->css.o[el->css.o_n].t = tmp_otype;
+      css_str_to_val_metric(&el->css.o[el->css.o_n], tmp_val);
+      el->css.o_n++;
+    } else {
+      el->css.o[set_me].t = tmp_otype;
+      css_str_to_val_metric(&el->css.o[set_me], tmp_val);
+    }
 
-    el->css.o_n++;
     free(tmp_val);
 
     while (*stl++ != ';')

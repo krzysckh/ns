@@ -1,9 +1,9 @@
 TARGET=ns
 
 CFLAGS=-Wall -Wextra -std=c89 -ggdb -DUSE_COLOR -DUSE_X -Wno-unused-variable\
-			 `pkg-config --cflags x11 xft`
-LDFLAGS=`pkg-config --libs x11 xft`
-OFILES=ns.o html.o render.o css.o
+			 -DUSE_CURL `pkg-config --cflags x11 xft libcurl`
+LDFLAGS=`pkg-config --libs x11 xft libcurl`
+OFILES=ns.o html.o render.o css.o net.o
 
 all: $(OFILES)
 	$(CC) $(OFILES) -o $(TARGET) $(LDFLAGS)

@@ -39,6 +39,7 @@ typedef enum {
 
   TEXT_TYPE,
 
+  CSS_ALL_SELECTORS, /* :^) */
   INTERNAL_BACK,
 } HTML_elem_type;
 
@@ -96,7 +97,8 @@ void calculate_css(HTML_elem *el);
 
 const char *elemt_to_str(HTML_elem_type t);
 
+FILE *download_file(char *url);
+
 void err(char *fmt, ...);
 void warn(char *fmt, ...);
 void info(char *fmt, ...);
-

@@ -53,7 +53,7 @@ void info(char *fmt, ...) {
 }
 
 int main (void) {
-  FILE *f = fopen("test.html", "r");
+  FILE *f = download_file("http://9front.org");
 
   HTML_elem *tree = create_HTML_tree(f);
 
