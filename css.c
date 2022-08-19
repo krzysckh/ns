@@ -76,10 +76,9 @@ void free_css(Calculated_CSS *c) {
   int i;
 
   for (i = 0; i < c->o_n; ++i)
-    if (c->o[i].v != NULL) {
-      warn("freeing %s", c->o[i].v);
+    if (c->o[i].v != NULL)
       free(c->o[i].v);
-    }
+
   if (c->o != NULL)
     free(c->o);
 }
@@ -202,7 +201,7 @@ Calculated_CSS csscpy(Calculated_CSS *c) {
     ret.o[i].t = c->o[i].t;
     ret.o[i].m = c->o[i].m;
 
-    if (ret.o[i].t == M_STRING) {
+    if (ret.o[i].m == M_STRING) {
       ret.o[i].v = malloc(strlen((char*)c->o[i].v) + 1);
       strcpy((char*)ret.o[i].v, (char*)c->o[i].v);
       ret.o[i].v[strlen((char*)c->o[i].v)] = 0;
@@ -235,7 +234,7 @@ void calculate_css(HTML_elem *el) {
     calculate_css(el->parent);
 
   stl = find_styles(get_root_from_elem(el));
-  stl = realloc(stl, strlen(stl) + strlen(PREDEF_CSS));
+  stl = realloc(stl, strlen(stl) + strlen(PREDEF_CSS) + 1);
   tmp_val = malloc(strlen(stl) + strlen(PREDEF_CSS) + 1);
   strcpy(tmp_val, PREDEF_CSS);
   strcat(tmp_val, stl);
