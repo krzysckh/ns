@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 
 typedef enum {
   ROOT,
@@ -62,7 +63,7 @@ typedef enum {
 
 typedef struct CSS_opt {
   CSS_otype t;
-  int *v;
+  uint32_t v;
   char *v_str;
   CSS_metric m;
 } CSS_opt;
@@ -95,6 +96,7 @@ void cpt_to_lower(char *from, char *to, int l);
 HTML_elem_type get_elem_type(char *text);
 
 void calculate_css(HTML_elem *el);
+char *internal_color_to_str(uint32_t c);
 
 const char *elemt_to_str(HTML_elem_type t);
 

@@ -6,7 +6,7 @@
 #include <wctype.h>
 
 /* update if needed */
-static int total_hours_wasted_here = 5;
+static int total_hours_wasted_here = 8;
 
 static char *PREDEF_CSS = "\
 * {\
@@ -15,6 +15,20 @@ static char *PREDEF_CSS = "\
   background-color: #dedede;\
 }\
 ";
+
+char *internal_color_to_str(uint32_t c) {
+  char *ret = malloc(8);
+#ifdef __LITTLE_ENDIAN__
+  snprintf(ret, 8, "#%02x%02x%02x", c >> 16 & 0xff , c >> 8 & 0xff,
+      c >> 0 & 0xff);
+#else
+#warning untested :^)
+  snprintf(ret, 8, "#%02x%02x%02x", c >> 0 & 0xff , c >> 8 & 0xff,
+      c >> 16 & 0xff);
+#endif
+  ret[7] = 0;
+  return ret;
+}
 
 static HTML_elem *get_root_from_elem(HTML_elem *e) {
   return (e->t == ROOT) ? e : get_root_from_elem(e->parent);
@@ -56,7 +70,6 @@ static char *find_styles(HTML_elem *root) {
           } else {
             l = strlen(ret);
           }
-          /*warn("tt_val = %s", root->child[i].child[j].TT_val);*/
           ret = realloc(ret, l + (int)strlen(root->child[i].child[j].TT_val) 
               + 1);
           if (wasnull) *ret = 0;
@@ -73,15 +86,12 @@ static char *find_styles(HTML_elem *root) {
 void free_css(Calculated_CSS *c) {
   int i;
 
-  for (i = 0; i < c->o_n; ++i) {
-    if (c->o[i].m == M_STRING) {
+  for (i = 0; i < c->o_n; ++i)
+    if (c->o[i].m == M_STRING)
       if (c->o[i].v_str != NULL)
         free(c->o[i].v_str);
-    } else if (c->o[i].v != NULL)
-      free(c->o[i].v);
-  }
 
-  if (c->o != NULL)
+  if (c->o_n)
     free(c->o);
 }
 
@@ -162,20 +172,17 @@ static void css_str_to_val_metric(CSS_opt *opt, char *v) {
     switch (*v) {
       case '#':
         /* TODO: #nnnnnn -> 0xnnnnnn */
-        opt->v = malloc(sizeof(int));
-        *(opt->v) = 0xff00ff;
+        opt->v = 0xff00ff;
         return;
         break;
-      case 'r':
+      /*case 'r':
       case 'h':
         warn("%s: rgb(), rgba(), hsl() not supported", __FILE__);
-        opt->v = malloc(sizeof(int));
-        *(opt->v) = 0xff00ff;
+        opt->v = 0xff00ff;
         return;
-        break;
+        break;*/
       default:
-        opt->v = malloc(sizeof(int));
-        *(opt->v) = css_colname_to_int(v);
+        opt->v = css_colname_to_int(v);
         return;
         break;
     }
@@ -188,7 +195,7 @@ static void css_str_to_val_metric(CSS_opt *opt, char *v) {
     return;
   }
 
-  opt->v = NULL;
+  opt->v = -1;
   opt->v_str = NULL;
 }
 
@@ -209,8 +216,7 @@ Calculated_CSS csscpy(Calculated_CSS *c) {
       strcpy(ret.o[i].v_str, c->o[i].v_str);
       ret.o[i].v_str[strlen(c->o[i].v_str)] = 0;
     } else {
-      ret.o[i].v = malloc(sizeof(int));
-      *(ret.o[i].v) = *(c->o[i].v);
+      ret.o[i].v = c->o[i].v;
     }
   }
 
@@ -222,12 +228,16 @@ void calculate_css(HTML_elem *el) {
   int i,
       checked_inline = 0,
       isinline = 0,
-      set_me;
+      set_me,
+      len;
   char *stl,
        *orig_stl,
        *tmp_val;
   HTML_elem_type tmp_type;
   CSS_otype tmp_otype;
+
+  if (el->t == TEXT_TYPE)
+    return;
 
   if (el->css.o != NULL) free_css(&el->css);
   el->css.o = NULL;
@@ -237,20 +247,32 @@ void calculate_css(HTML_elem *el) {
     calculate_css(el->parent);
 
   stl = find_styles(get_root_from_elem(el));
-  stl = realloc(stl, strlen(stl) + strlen(PREDEF_CSS) + 1);
-  tmp_val = malloc(strlen(stl) + strlen(PREDEF_CSS) + 1);
-  strcpy(tmp_val, PREDEF_CSS);
-  strcat(tmp_val, stl);
-  strcpy(stl, tmp_val);
-  free(tmp_val);
+
+  if (el->t == ROOT) {
+    if (stl == NULL) {
+      stl = malloc(strlen(PREDEF_CSS) + 1);
+      strcpy(stl, PREDEF_CSS);
+      stl[strlen(PREDEF_CSS)] = 0;
+    } else {
+      len = strlen(stl);
+      stl = realloc(stl, len + strlen(PREDEF_CSS) + 1);
+      tmp_val = malloc(len + strlen(PREDEF_CSS) + 1);
+      strcpy(tmp_val, PREDEF_CSS);
+      strcat(tmp_val, stl);
+      strcpy(stl, tmp_val);
+
+      stl[strlen(PREDEF_CSS) + len] = 0;
+      free(tmp_val);
+    }
+  }
 
   orig_stl = stl;
 
   while (*stl) {
     while (iswspace(*stl)) stl++;
-    if (!*stl) break;
+    if (!*stl) goto end;
 
-    if (*stl == '.' || *stl == '#') { 
+    if (*stl == '.' || *stl == '#') {
       warn("%s: id or class not supported in css (near %.5s[...]) (elem %p)",
           __FILE__, stl, el);
       goto next;
@@ -277,6 +299,7 @@ next_opt:
     tmp_otype = get_css_otype(stl);
     if (tmp_otype == CSS_NEXT_SELECTOR)
       goto next;
+
     if (tmp_otype == CSS_UNKNOWN) {
       warn("%s: unknown css option near %.5s[...] (elem %p)", __FILE__,
           stl, el);
@@ -309,14 +332,15 @@ next_opt:
     free(tmp_val);
 
 nextopt_plus_movestl:
-
     while (*stl++ != ';')
       if (!*stl) goto end;
     goto next_opt;
 next:
     while (*stl != '}') {
-      if (!*stl)
+      if (!*stl) {
+        stl--;
         break;
+      }
 
       ++stl;
     }

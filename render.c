@@ -414,9 +414,38 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
           ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
         *y = *y + atoi(h6_sz);
       }
-      else
-        XftDrawStringUtf8(xd, color, font_n, *x, *y, (const FcChar8*)draw,
-            ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));
+      else {
+        char *l_font_t = NULL,
+             *l_font_color = NULL,
+             fontstr[1024];
+        int l_font_sz = 15; /* lol */
+        for (i = 0; i < el->css.o_n; ++i)
+          if (el->css.o[i].t == COLOR) {
+            l_font_color = internal_color_to_str(el->css.o[i].v);
+            break;
+          }
+        for (i = 0; i < el->css.o_n; ++i)
+          if (el->css.o[i].t == FONT_FAMILY)
+            l_font_t = el->css.o[i].v_str;
+
+        if (l_font_t == NULL) {
+          warn("%s: font-family undefined (probably a bug)", __FILE__);
+          l_font_t = "monospace";
+        }
+
+        if (l_font_color == NULL) {
+          warn("%s: font color undefined (probably a bug)", __FILE__);
+          l_font_t = "#ff0000";
+        }
+
+        snprintf(fontstr, 1024, "%s:pixelsize=%d:style=%s", l_font_t,
+            l_font_sz, "Normal");
+        x_load_render_destroy(fontstr, draw, l_font_color, *x, *y,
+          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
+        free(l_font_color);
+      }
+        /*XftDrawStringUtf8(xd, color, font_n, *x, *y, (const FcChar8*)draw,*/
+            /*((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));*/
 
       draw += ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw);
       *y = *y + fontsz * 2;
