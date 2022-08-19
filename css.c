@@ -350,6 +350,7 @@ next:
 end:
   free(orig_stl);
 
+real_end:
   if (!checked_inline) {
     for (i = 0; i < el->argc; ++i) {
       if (strcmp(el->argv[i][0], "style") == 0) {
@@ -365,7 +366,6 @@ end:
     }
   }
 
-real_end:
   for (i = 0; i < el->child_n; ++i)
     el->child[i].css = csscpy(&el->css);
 }
