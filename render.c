@@ -348,11 +348,21 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     }
 
     draw = el->TT_val;
+    
 
     while (*draw) {
       if (*y > maxh) {
+#ifdef DUMB_WARNINGS
         warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (no y space)",
             __FILE__, draw, draw, *x, *y);
+#endif
+        return;
+      }
+      if (*y < 0) {
+#ifdef DUMB_WARNINGS
+        warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (y < 0)",
+            __FILE__, draw, draw, *x, *y);
+#endif
         return;
       }
 
