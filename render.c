@@ -1,13 +1,24 @@
 #include "ns.h"
 
+#ifdef USE_9
+#include <u.h>
+#include <libc.h>
+#include <draw.h>
+#include <cursor.h>
+#include <event.h>
+/*#include <mouse.h>*/
+/*#include <keyboard.h>*/
+#else
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 
 #include <time.h>
+#endif
 
 static void x_render_page(HTML_elem*);
+static void plan9_render_page(HTML_elem*);
 
 typedef struct {
   uint8_t bold;
@@ -66,7 +77,12 @@ void get_text_attr(HTML_elem *el, Text_attr *attr, int forwards) {
 }
 
 void render_page(HTML_elem *page) {
+#ifdef USE_X
   x_render_page(page);
+#endif
+#ifdef USE_9
+  plan9_render_page(page);
+#endif
 }
 
 #ifdef USE_X
@@ -633,4 +649,77 @@ endloop:
 }
 
 #endif
+#ifdef USE_9
 
+static Image *bg;
+static HTML_elem *root;
+static int *x,
+           *y;
+#define fontsz 16
+#define padding 8
+
+static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
+  int i;
+
+  if (el->t == TEXT_TYPE) {
+    warn("el->TT_val = %s", el->TT_val);
+    string(screen, Pt(*x, *y), display->black, ZP, font, el->TT_val);
+    *y += fontsz + padding;
+  } else {
+    for (i = 0; i < el->child_n; ++i)
+      p9_recursive_render_text(screen, &el->child[i]);
+  }
+}
+
+static void redraw(Image *screen) {
+  int x_r = 0,
+      y_r = 0;
+  x = &x_r;
+  y = &y_r;
+
+  draw(screen, screen->r, bg, nil, ZP);
+  p9_recursive_render_text(screen, root);
+  /*string(screen, Pt(0, 0), display->black, ZP, font, "despacito");*/
+
+  flushimage(display, Refnone);
+}
+
+void eresized(int new) {
+  if (new && getwindow(display, Refnone) < 0)
+    warn("%s: can't reattach window", __FILE__);
+  redraw(screen);
+}
+
+static void plan9_render_page(HTML_elem* page) {
+#ifdef PLAN9PORT
+  uint32_t color = 0xdedede;
+  Event e;
+  Mouse m;
+  int key;
+
+  root = page;
+
+  if (initdraw(nil, nil, argv0) < 0)
+    sysfatal("%s: %r", argv0);
+
+  bg = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1, color);
+  if (bg == nil)
+    err("failed to alloc images");
+
+  redraw(screen);
+
+  einit(Emouse);
+  while (1) {
+    key = event(&e);
+  }
+
+  if (getwindow(display, Refnone) < 0)
+    sysfatal("%s: %r", argv0);
+
+  exits(nil);
+#else
+  err("No.");
+#endif
+}
+
+#endif
