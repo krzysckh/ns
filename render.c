@@ -349,28 +349,29 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
     draw = el->TT_val;
 
-    if (at.h1) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-        atoi(h1_sz), fontratio, 1);
-    else if (at.h2) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-        atoi(h2_sz), fontratio, 1);
-    else if (at.h3) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-        atoi(h3_sz), fontratio, 1);
-    else if (at.h4) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-        atoi(h4_sz), fontratio, 1);
-    else if (at.h5) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-        atoi(h5_sz), fontratio, 1);
-    else if (at.h6) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-        atoi(h6_sz), fontratio, 1);
-    else
-      maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx, fontsz, fontratio, 
-          1);
-
     while (*draw) {
       if (*y > maxh) {
         warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (no y space)",
             __FILE__, draw, draw, *x, *y);
         return;
       }
+
+      if (at.h1) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+          atoi(h1_sz), fontratio, 1);
+      else if (at.h2) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+          atoi(h2_sz), fontratio, 1);
+      else if (at.h3) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+          atoi(h3_sz), fontratio, 1);
+      else if (at.h4) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+          atoi(h4_sz), fontratio, 1);
+      else if (at.h5) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+          atoi(h5_sz), fontratio, 1);
+      else if (at.h6) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
+          atoi(h6_sz), fontratio, 1);
+      else
+        maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx, fontsz, fontratio, 
+            1);
+
       if (at.bold)
         XftDrawStringUtf8(xd, color, font_b, *x, *y, (const FcChar8*)draw,
             ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));

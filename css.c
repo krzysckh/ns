@@ -14,6 +14,9 @@ static char *PREDEF_CSS = "\
   color: black;\
   background-color: #dedede;\
 }\
+a {\
+  color: blue;\
+}\
 ";
 
 char *internal_color_to_str(uint32_t c) {
