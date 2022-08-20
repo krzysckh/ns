@@ -21,7 +21,7 @@ a {\
 
 char *internal_color_to_str(uint32_t c) {
   char *ret = malloc(8);
-#ifdef __LITTLE_ENDIAN__
+#if __LITTLE_ENDIAN__ || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   snprintf(ret, 8, "#%02x%02x%02x", c >> 16 & 0xff , c >> 8 & 0xff,
       c >> 0 & 0xff);
 #else
