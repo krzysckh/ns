@@ -655,16 +655,77 @@ static Image *bg;
 static HTML_elem *root;
 static int *x,
            *y;
-#define fontsz 16
+#define fontsz atoi(FONTSIZE9)
 #define padding 8
 
+static uint32_t p9_internal_color_to_rgba(uint32_t c) {
+  uint32_t ret = c;
+#if __LITTLE_ENDIAN__ || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  return c << 8 | (c >> 24) | 0xff;
+#else
+#warning untested :^)
+#warning it will not work probably
+  return c << 8 | (c >> 24) | 0xff;
+#endif
+}
+
+/* it will not be perfect
+ * it's going to approximate the maximum length
+ * and i know it's going to be wrong
+ * :^)
+ */
+static int p9_get_maxlen(Image *screen) {
+  int ret;
+
+  if (Dx(screen->r) - *x <= 0) {
+    *y += fontsz + padding;
+    *x = 0;
+  }
+  ret = (Dx(screen->r) - *x) / (fontsz / 2);
+  if (ret < 1)
+    return 1;
+  else
+    return ret;
+}
+
 static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
-  int i;
+  int i,
+      maxlen;
+  uint32_t clr;
+  Image *tmp_img;
+  Point *pt = { x, y };
+  char *draw_me;
+
+  calculate_css(el);
+
+  if (el->t == PARAGRAPH) {
+    *y += fontsz + (padding * 2);
+    *x = 0;
+  }
 
   if (el->t == TEXT_TYPE) {
-    warn("el->TT_val = %s", el->TT_val);
-    string(screen, Pt(*x, *y), display->black, ZP, font, el->TT_val);
-    *y += fontsz + padding;
+    for (i = 0; i < el->css.o_n; ++i)
+      if (el->css.o[i].t == COLOR)
+        break;
+    /* will not check for problems. too alpha to do so B) */
+    draw_me = el->TT_val;
+
+    while (*draw_me) {
+      maxlen = p9_get_maxlen(screen);
+
+      /*warn("color =  0x%08x", p9_internal_color_to_rgba(el->css.o[i].v));*/
+      tmp_img = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1,
+          p9_internal_color_to_rgba(el->css.o[i].v));
+
+      *pt = stringn(screen, Pt(*x, *y), tmp_img, ZP, font, el->TT_val,
+          (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me));
+
+      draw_me += (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me);
+      if (*draw_me) {
+        *x = 0;
+        *y += fontsz + padding;
+      }
+    }
   } else {
     for (i = 0; i < el->child_n; ++i)
       p9_recursive_render_text(screen, &el->child[i]);
@@ -677,9 +738,9 @@ static void redraw(Image *screen) {
   x = &x_r;
   y = &y_r;
 
+  /*warn("%d", Dx(screen->r));*/
   draw(screen, screen->r, bg, nil, ZP);
   p9_recursive_render_text(screen, root);
-  /*string(screen, Pt(0, 0), display->black, ZP, font, "despacito");*/
 
   flushimage(display, Refnone);
 }
@@ -692,14 +753,15 @@ void eresized(int new) {
 
 static void plan9_render_page(HTML_elem* page) {
 #ifdef PLAN9PORT
-  uint32_t color = 0xdedede;
+  uint32_t color = 0xdededeff;
   Event e;
   Mouse m;
   int key;
 
   root = page;
 
-  if (initdraw(nil, nil, argv0) < 0)
+  if (initdraw(nil, FONTDIR9"/"FONTTYPE9"/"FONTNAME9"."FONTSIZE9".font", argv0)
+      < 0)
     sysfatal("%s: %r", argv0);
 
   bg = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1, color);

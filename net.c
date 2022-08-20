@@ -23,6 +23,10 @@ FILE *download_file(char *url) {
   }   
 
   return ret;
+#elif defined(USE_9)
+  warn("%s: compiled on plan9* - cannot download %s - not implemented",
+      __FILE__, url);
+  return fopen("/dev/null", "r");
 #else
   warn("%s: compiled without libcurl - alternative methods not implemented "
       "- cannot download %s", __FILE__, url);

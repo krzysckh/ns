@@ -6,6 +6,9 @@ OS=unix
 TARGET=ns
 OFILES=ns.o html.o render.o css.o net.o
 
+PLAN9PORT_BASEDIR=/usr/local/plan9
+# on openbsd
+
 .if ${OS} == "unix"
 CFLAGS=-Wall -Wextra -std=c89 -ggdb -Wno-unused-variable\
 			 `pkg-config --cflags x11 xft libcurl` \
@@ -21,7 +24,11 @@ echo untested - exiting.
 exit
 CFLAGS=\
 	-DUSE_9 \
-	-DDUMB_WARNINGS
+	-DDUMB_WARNINGS \
+	-DFONTDIR9=\"/lib/font\" \
+	-DFONTTYPE9=\"lucsans\" \
+	-DFONTNAME9=\"typeunicode\" \
+	-DFONTSIZE9=\"7\"
 .endif
 
 .if ${OS} == "plan9port"
@@ -29,7 +36,15 @@ CC=9c
 LD=9l
 CFLAGS=\
 	-DUSE_9 \
-	-DDUMB_WARNINGS
+	-DUSE_CURL \
+	`pkg-config --cflags libcurl` \
+	-DDUMB_WARNINGS \
+	-DPLAN9PORT_BASEDIR=\"$(PLAN9PORT_BASEDIR)\" \
+	-DFONTDIR9=\"/usr/local/plan9/font\" \
+	-DFONTTYPE9=\"lucsans\" \
+	-DFONTNAME9=\"typeunicode\" \
+	-DFONTSIZE9=\"7\"
+LDFLAGS=`pkg-config --libs libcurl`
 .endif
 
 
