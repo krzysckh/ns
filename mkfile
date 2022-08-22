@@ -1,4 +1,6 @@
-# no idea if it works
+# change for your system
+CC=8c
+LD=8l
 
 TARGET=ns
 

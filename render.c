@@ -673,6 +673,12 @@ static int *x,
 #endif
 #define padding 8
 
+#ifdef PLAN9PORT
+#define ZERO 0
+#else
+#define ZERO screen->r.min.x
+#endif
+
 static uint32_t p9_internal_color_to_rgba(uint32_t c) {
   uint32_t ret = c;
 #ifdef USE_9
@@ -699,7 +705,7 @@ static int p9_get_maxlen(Image *screen) {
 
   if (Dx(screen->r) - *x <= 0) {
     *y += fontsz + padding;
-    *x = 0;
+    *x = ZERO;
   }
   ret = (Dx(screen->r) - *x) / (fontsz / 2);
   if (ret < 1)
@@ -723,7 +729,7 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
 
   if (el->t == PARAGRAPH) {
     *y += fontsz + (padding * 2);
-    *x = 0;
+    *x = ZERO;
   }
 
   if (el->t == TEXT_TYPE) {
@@ -747,7 +753,7 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
 
       draw_me += (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me);
       if (*draw_me) {
-        *x = 0;
+        *x = ZERO;
         *y += fontsz + padding;
       }
     }
