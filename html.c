@@ -286,8 +286,13 @@ HTML_elem *create_HTML_tree(int fp) {
 #else
 HTML_elem *create_HTML_tree(FILE *fp) {
 #endif
+#ifdef USE_9
+  vlong fn_start = nsec(),
+        fn_end;
+#else
   clock_t fn_start = clock(),
           fn_end;
+#endif
 
   HTML_elem *ret = malloc(sizeof(HTML_elem)),
             *cur = ret;
@@ -400,9 +405,15 @@ HTML_elem *create_HTML_tree(FILE *fp) {
 
   free(text_orig_p);
 
+#ifdef USE_9
+  fn_end = nsec();
+  info("%s: create_HTML_tree() -> took %6.4f",
+      __FILE__, (double)(fn_end - fn_start) / 1000000000);
+#else
   fn_end = clock();
   info("%s: create_HTML_tree() -> took %6.4f",
       __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
+#endif
   return ret;
 }
 

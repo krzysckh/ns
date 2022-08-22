@@ -529,8 +529,13 @@ static void x_render_page(HTML_elem *page) {
   XftDraw *xd;
   XftColor color,
            bgcolor;
-  clock_t time_start,
-          time_end;
+#ifdef USE_9
+  vlong fn_start = nsec(),
+        fn_end;
+#else
+  clock_t fn_start = clock(),
+          fn_end;
+#endif
 
   Display *dpy = XOpenDisplay(NULL);
   if (!dpy) {
@@ -597,6 +602,15 @@ static void x_render_page(HTML_elem *page) {
       time_end = clock();
       info("%s: x_recursive_render_text() -> took %6.4f",
           __FILE__, (double)(time_end - time_start) / CLOCKS_PER_SEC);
+#ifdef USE_9
+      fn_end = nsec();
+      info("%s: x_recursive_render_text() -> took %6.4f",
+          __FILE__, (double)(fn_end - fn_start) / 1000000000);
+#else
+      fn_end = clock();
+      info("%s: x_recursive_render_text() -> took %6.4f",
+          __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
+#endif
 
     } else if (ev.type == KeyPress) {
       XLookupString(&ev.xkey, NULL, 0, &ks, NULL);
@@ -654,7 +668,12 @@ static Image *bg;
 static HTML_elem *root;
 static int *x,
            *y;
+#ifdef PLAN9PORT
 #define fontsz atoi(FONTSIZE9)
+#else
+#define fontsz 8
+/* ? */
+#endif
 #define padding 8
 
 static uint32_t p9_internal_color_to_rgba(uint32_t c) {
@@ -685,6 +704,9 @@ static int p9_get_maxlen(Image *screen) {
     return 1;
   else
     return ret;
+
+  /* unreachable - for the plan9 compilers :^) */
+  return ret;
 }
 
 static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
@@ -758,9 +780,16 @@ static void plan9_render_page(HTML_elem* page) {
 
   root = page;
 
+#ifdef PLAN9PORT
   if (initdraw(nil, FONTDIR9"/"FONTTYPE9"/"FONTNAME9"."FONTSIZE9".font", argv0)
       < 0)
     sysfatal("%s: %r", argv0);
+#else
+  /* we aint doin any of that shit here */
+  if (initdraw(nil, nil, argv0)
+      < 0)
+    sysfatal("%s: %r", argv0);
+#endif
 
   bg = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1, color);
   if (bg == nil)
