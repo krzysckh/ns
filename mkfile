@@ -9,10 +9,10 @@ CPPFLAGS=-DUSE_9 -DDUMB_WARNINGS
 %.cpp.c: %.c
 	cpp $CPPFLAGS $stem.c > $stem.cpp.c
 %.cpp.o: %.cpp.c
-	$CC $CFLAGS -c $stem.cpp.c
+	$CC $CFLAGS -o $stem.cpp.o -c $stem.cpp.c
 
 all: $OFILES
-	$LD $OFILES -o $TARGET $LDFLAGS
+	$LD -o $TARGET $LDFLAGS $OFILES
 clean:
-	rm -f *.o $TARGET
+	rm -f *.o *.cpp.c $TARGET
 

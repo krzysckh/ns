@@ -758,8 +758,13 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
 }
 
 static void redraw(Image *screen) {
+#ifdef PLAN9PORT
   int x_r = 0,
       y_r = 0;
+#else
+  int x_r = screen->r.min.x,
+      y_r = screen->r.min.y;
+#endif
   x = &x_r;
   y = &y_r;
 
@@ -804,6 +809,7 @@ static void plan9_render_page(HTML_elem* page) {
   einit(Emouse);
   while (1) {
     key = event(&e);
+    redraw(screen);
   }
 
   if (getwindow(display, Refnone) < 0)
