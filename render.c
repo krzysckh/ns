@@ -1,13 +1,12 @@
 #include "ns.h"
 
 #ifdef USE_9
-#include <u.h>
-#include <libc.h>
 #include <draw.h>
 #include <cursor.h>
 #include <event.h>
-/*#include <mouse.h>*/
-/*#include <keyboard.h>*/
+#ifndef PLAN9PORT
+static char __FILE__[] = "css.c";
+#endif
 #else
 #include <stdio.h>
 #include <stdlib.h>
@@ -752,7 +751,6 @@ void eresized(int new) {
 }
 
 static void plan9_render_page(HTML_elem* page) {
-#ifdef PLAN9PORT
   uint32_t color = 0xdededeff;
   Event e;
   Mouse m;
@@ -779,9 +777,6 @@ static void plan9_render_page(HTML_elem* page) {
     sysfatal("%s: %r", argv0);
 
   exits(nil);
-#else
-  err("No.");
-#endif
 }
 
 #endif

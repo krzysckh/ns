@@ -1,10 +1,16 @@
 #include "ns.h"
 
+#ifdef USE_9
+#ifndef PLAN9PORT
+static char __FILE__[] = "html.c";
+#endif
+#else
 #include <stdlib.h>
 #include <string.h>
 #include <wctype.h>
 #include <ctype.h>
 #include <time.h>
+#endif
 
 const char *elemt_to_str(HTML_elem_type t) {
   switch (t) {
@@ -45,7 +51,11 @@ const char *elemt_to_str(HTML_elem_type t) {
   return NULL;
 }
 
+#ifdef USE_9
+void html_print_tree(HTML_elem *el, int depth, int outf) {
+#else
 void html_print_tree(HTML_elem *el, int depth, FILE *outf) {
+#endif
   int i,
       j;
 
@@ -271,7 +281,11 @@ s_argv:
   }
 }
 
+#ifdef USE_9
+HTML_elem *create_HTML_tree(int fp) {
+#else
 HTML_elem *create_HTML_tree(FILE *fp) {
+#endif
   clock_t fn_start = clock(),
           fn_end;
 
@@ -287,13 +301,26 @@ HTML_elem *create_HTML_tree(FILE *fp) {
       tt_sz,
       i;
   HTML_elem_type tmp_t;
+#ifdef USE_9
+  /* char *text -> full file
+   * text_sz -> full file sz
+   */
 
+  /* i _will not_ read about <bio.h>, just because i can't be bothered
+   * in __the future__ i'll fix this (TODO)
+   */
+  text_sz = seek(fp, 0, 2);
+  seek(fp, 0, 0);
+  text = malloc(text_sz + 1);
+  read(fp, text, text_sz);
+#else
   fseek(fp, 0, SEEK_END);
   text_sz = ftell(fp);
   fseek(fp, 0, SEEK_SET);
 
   text = malloc(text_sz + 1);
   fread(text, 1, text_sz, fp);
+#endif
   text[text_sz] = 0;
   text_orig_p = text;
 

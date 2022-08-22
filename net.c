@@ -1,10 +1,20 @@
 #include "ns.h"
 
+#ifdef USE_9
+#ifndef PLAN9PORT
+static char __FILE__[] = "net.c";
+#endif
+#endif
+
 #ifdef USE_CURL
 #include <curl/curl.h>
 #endif
 
+#ifdef USE_9
+int download_file(char *url) {
+#else
 FILE *download_file(char *url) {
+#endif
 #ifdef USE_CURL
   info("%s: getting %s using curl", __FILE__, url);
   CURL *c;
@@ -26,7 +36,7 @@ FILE *download_file(char *url) {
 #elif defined(USE_9)
   warn("%s: compiled on plan9* - cannot download %s - not implemented",
       __FILE__, url);
-  return fopen("/dev/null", "r");
+  return open("/dev/null", OREAD);
 #else
   warn("%s: compiled without libcurl - alternative methods not implemented "
       "- cannot download %s", __FILE__, url);

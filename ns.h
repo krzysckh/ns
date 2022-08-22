@@ -1,5 +1,30 @@
+#ifdef USE_9
+#include <u.h>
+#include <libc.h>
+
+#include <ctype.h>
+#define iswspace(x) isspace(x)
+
+enum {
+  stdin,
+  stdout,
+  stderr
+};
+
+#define printf(fmt, ...) print(fmt, __VA_ARGS__)
+#define fprintf(fmt, ...) fprint(fmt, __VA_ARGS__)
+#define vfprintf(fmt, ...) vfprint(fmt, __VA_ARGS__)
+#define snprintf(x, n, fmt, ...) snprint(x, n, fmt, __VA_ARGS__)
+
+#ifndef PLAN9PORT
+typedef short int uint8_t;
+typedef unsigned long int uint32_t;
+#endif
+
+#else
 #include <stdio.h>
 #include <stdint.h>
+#endif
 
 typedef enum {
   ROOT,
@@ -88,19 +113,24 @@ typedef struct HTML_elem {
   Calculated_CSS css;
 } HTML_elem;
 
-void free_HTML_elem(HTML_elem *el);
+#ifdef USE_9
+HTML_elem *create_HTML_tree(int fp);
+void html_print_tree(HTML_elem *el, int depth, int outf);
+int download_file(char *url);
+#else
 HTML_elem *create_HTML_tree(FILE *fp);
-void render_page(HTML_elem *page);
 void html_print_tree(HTML_elem *el, int depth, FILE *outf);
+FILE *download_file(char *url);
+#endif
+
+void free_HTML_elem(HTML_elem *el);
+void render_page(HTML_elem *page);
 void cpt_to_lower(char *from, char *to, int l);
 HTML_elem_type get_elem_type(char *text);
-
 void calculate_css(HTML_elem *el);
 char *internal_color_to_str(uint32_t c);
 
 const char *elemt_to_str(HTML_elem_type t);
-
-FILE *download_file(char *url);
 
 void err(char *fmt, ...);
 void warn(char *fmt, ...);

@@ -1,9 +1,15 @@
 #include "ns.h"
 #include "css_colors.h"
 
+#ifdef USE_9
+#ifndef PLAN9PORT
+static char __FILE__[] = "css.c";
+#endif
+#else
 #include <stdlib.h>
 #include <string.h>
 #include <wctype.h>
+#endif
 
 /* update if needed */
 static int total_hours_wasted_here = 8;

@@ -1,7 +1,11 @@
 #include "ns.h"
 
+#ifdef USE_9
+
+#else
 #include <stdlib.h>
 #include <stdarg.h>
+#endif
 
 void err(char *fmt, ...) {
   va_list vl;
@@ -53,17 +57,30 @@ void info(char *fmt, ...) {
 }
 
 int main (int argc, char *argv[]) {
+#ifdef USE_9
+  int f;
+#else
   FILE *f;
+#endif
+
   if (argc > 1)
     f = download_file(argv[1]);
   else
+#ifdef USE_9
+    f = open("test.html", OREAD);
+#else
     f = fopen("test.html", "r");
+#endif
 
   HTML_elem *tree = create_HTML_tree(f);
 
   render_page(tree);
 
+#ifdef USE_9
+  close(f);
+#else
   fclose(f);
+#endif
 
   free_HTML_elem(tree);
   free(tree);

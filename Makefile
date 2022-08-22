@@ -20,8 +20,6 @@ LDFLAGS=`pkg-config --libs x11 xft libcurl`
 .endif
 
 .if ${OS} == "plan9"
-echo untested - exiting.
-exit
 CFLAGS=\
 	-DUSE_9 \
 	-DDUMB_WARNINGS \
@@ -36,15 +34,12 @@ CC=9c
 LD=9l
 CFLAGS=\
 	-DUSE_9 \
-	-DUSE_CURL \
-	`pkg-config --cflags libcurl` \
 	-DDUMB_WARNINGS \
 	-DPLAN9PORT_BASEDIR=\"$(PLAN9PORT_BASEDIR)\" \
 	-DFONTDIR9=\"/usr/local/plan9/font\" \
 	-DFONTTYPE9=\"lucsans\" \
 	-DFONTNAME9=\"typeunicode\" \
 	-DFONTSIZE9=\"7\"
-LDFLAGS=`pkg-config --libs libcurl`
 .endif
 
 
