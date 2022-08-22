@@ -21,7 +21,11 @@ void err(char *fmt, ...) {
   vfprintf(stderr, fmt, vl);
   fprintf(stderr, "\n");
   va_end(vl);
+#ifdef USE_9
+  sysfatal("err");
+#else
   exit(1);
+#endif
 }
 
 void warn(char *fmt, ...) {

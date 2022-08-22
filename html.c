@@ -97,7 +97,7 @@ void init_HTML_elem(HTML_elem *el, HTML_elem *parent) {
 void free_HTML_elem(HTML_elem *el) {
   int i, j;
 
-  if (el->TT_val != NULL)
+  if (el->t == TEXT_TYPE)
     free(el->TT_val);
 
   for (j = 0; j < el->argc; ++j) {

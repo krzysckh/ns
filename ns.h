@@ -19,7 +19,7 @@ enum {
 #ifndef PLAN9PORT
 typedef short int uint8_t;
 typedef unsigned long int uint32_t;
-#define NULL nil;
+#define NULL nil
 #endif
 
 #else
