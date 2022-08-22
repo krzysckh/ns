@@ -1,9 +1,6 @@
 #include "ns.h"
 
 #ifdef USE_9
-#ifndef PLAN9PORT
-static char __FILE__[] = "html.c";
-#endif
 #else
 #include <stdlib.h>
 #include <string.h>

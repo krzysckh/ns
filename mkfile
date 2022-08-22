@@ -2,17 +2,13 @@
 
 TARGET=ns
 
-OFILES=ns.o html.o render.o css.o net.o
+OFILES=ns.cpp.o html.cpp.o render.cpp.o css.cpp.o net.cpp.o
 
-CFLAGS=\
-	-DUSE_9 \
-	-DDUMB_WARNINGS \
-	-DFONTDIR9=\"/lib/font\" \
-	-DFONTTYPE9=\"lucsans\" \
-	-DFONTNAME9=\"typeunicode\" \
-	-DFONTSIZE9=\"7\"
+CPPFLAGS=-DUSE_9 -DDUMB_WARNINGS
 
-%.o: %.c
+%.cpp.c: %.c
+	cpp $CPPFLAGS $stem.c > $stem.cpp.c
+%.cpp.o: %.cpp.c
 	$CC $CFLAGS -c $stem.c
 
 all: $OFILES

@@ -1,9 +1,6 @@
 #include "ns.h"
 
 #ifdef USE_9
-#ifndef PLAN9PORT
-static char __FILE__[] = "net.c";
-#endif
 #endif
 
 #ifdef USE_CURL

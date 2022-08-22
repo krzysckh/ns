@@ -19,16 +19,6 @@ CFLAGS=-Wall -Wextra -std=c89 -ggdb -Wno-unused-variable\
 LDFLAGS=`pkg-config --libs x11 xft libcurl`
 .endif
 
-.if ${OS} == "plan9"
-CFLAGS=\
-	-DUSE_9 \
-	-DDUMB_WARNINGS \
-	-DFONTDIR9=\"/lib/font\" \
-	-DFONTTYPE9=\"lucsans\" \
-	-DFONTNAME9=\"typeunicode\" \
-	-DFONTSIZE9=\"7\"
-.endif
-
 .if ${OS} == "plan9port"
 CC=9c
 LD=9l
@@ -44,7 +34,9 @@ CFLAGS=\
 
 
 all: $(OFILES)
-.if ${OS} == "plan9" || ${OS} == "plan9port"
+.if ${OS} == "plan9" 
+	mk
+.elif ${OS} == "plan9port"
 	$(LD) $(OFILES) -o $(TARGET) $(LDFLAGS)
 .else
 	$(CC) $(OFILES) -o $(TARGET) $(LDFLAGS)

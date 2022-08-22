@@ -4,9 +4,6 @@
 #include <draw.h>
 #include <cursor.h>
 #include <event.h>
-#ifndef PLAN9PORT
-static char __FILE__[] = "css.c";
-#endif
 #else
 #include <stdio.h>
 #include <stdlib.h>
@@ -596,12 +593,12 @@ static void x_render_page(HTML_elem *page) {
       width = wa.width;
       height = wa.height;
 
-      time_start = clock();
+      fn_start = clock();
       x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
           height, 1);
-      time_end = clock();
+      fn_end = clock();
       info("%s: x_recursive_render_text() -> took %6.4f",
-          __FILE__, (double)(time_end - time_start) / CLOCKS_PER_SEC);
+          __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
 #ifdef USE_9
       fn_end = nsec();
       info("%s: x_recursive_render_text() -> took %6.4f",
@@ -678,12 +675,17 @@ static int *x,
 
 static uint32_t p9_internal_color_to_rgba(uint32_t c) {
   uint32_t ret = c;
-#if __LITTLE_ENDIAN__ || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#ifdef USE_9
+  /* yeaaah just fuuckin throw it */
+  return c << 8 | (c >> 24) | 0xff;
+#else
+#ifdef __LITTLE_ENDIAN__ || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   return c << 8 | (c >> 24) | 0xff;
 #else
 #warning untested :^)
 #warning it will not work probably
   return c << 8 | (c >> 24) | 0xff;
+#endif
 #endif
 }
 
@@ -714,7 +716,7 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
       maxlen;
   uint32_t clr;
   Image *tmp_img;
-  Point *pt = { x, y };
+  Point pt = { *x, *y };
   char *draw_me;
 
   calculate_css(el);
@@ -738,8 +740,10 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
       tmp_img = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1,
           p9_internal_color_to_rgba(el->css.o[i].v));
 
-      *pt = stringn(screen, Pt(*x, *y), tmp_img, ZP, font, el->TT_val,
+      pt = stringn(screen, Pt(*x, *y), tmp_img, ZP, font, el->TT_val,
           (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me));
+      *x = pt.x;
+      *y = pt.y;
 
       draw_me += (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me);
       if (*draw_me) {
