@@ -1,18 +1,27 @@
 WIP
 ===
 
-ns - maybe a html only web browser in the far, far future
+ns - maybe a web browser in the far, far future (for unix, plan9)
 
 files:
- ~> html.c - (wip) html parser
- ~> render.c (wip) {X11(wip),console(in the future)} frontend
+ ~> html.c - html parser (works!)
+ ~> render.c (wip) {X11(wip),plan9(wip),console(in the future)} frontend
  ~> css.c - No.
  ~> ns.c - main
 
-$ make
-$ ./ns
+unix:
+  $ make OS=unix
+  $ ./ns
+unix+p9p:
+  $ make OS=plan9port
+  $ ./ns
+plan9:
+  ; mk
+  ; ./ns
 
 references
 ----------
 - https://github.com/jsynacek/xft-example/blob/master/main.c
 - http://wiki.9front.org/programming-gui
+- http://man.9front.org/1/mk
+- https://en.wikipedia.org/wiki/Five_stages_of_grief
