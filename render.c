@@ -381,7 +381,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 #endif
         return;
       }
-      if (*y < 0) {
+      if (*y + 10 < 0) {
 #ifdef DUMB_WARNINGS
         warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (y < 0)",
             __FILE__, draw, draw, *x, *y);
