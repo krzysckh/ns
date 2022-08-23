@@ -56,6 +56,7 @@ FILE *download_file(char *url) {
   c = curl_easy_init();
 
   if (c) {   
+    curl_easy_setopt(c, CURLOPT_USERAGENT, "ns under X11");
     curl_easy_setopt(c, CURLOPT_URL, url);
     curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, NULL);
     curl_easy_setopt(c, CURLOPT_WRITEDATA, ret);
