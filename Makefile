@@ -4,7 +4,7 @@ OS=unix
 # plan9port - compiles a version for plan9port
 
 TARGET=ns
-OFILES=ns.o html.o render.o css.o net.o
+OFILES=ns.o html.o render.o css.o net.o click.o
 
 PLAN9PORT_BASEDIR=/usr/local/plan9
 # on openbsd
@@ -36,8 +36,6 @@ CFLAGS=\
 all: $(OFILES)
 .if ${OS} == "plan9" 
 	mk
-.elif ${OS} == "plan9port"
-	$(LD) $(OFILES) -o $(TARGET) $(LDFLAGS)
 .else
 	$(CC) $(OFILES) -o $(TARGET) $(LDFLAGS)
 .endif

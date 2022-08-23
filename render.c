@@ -83,6 +83,10 @@ void render_page(HTML_elem *page) {
 
 #ifdef USE_X
 
+/* TODO: DO NOT FUCKING RENDER PAGE EVERY TIME AN EVENT IS REGISTERED
+ * thank you :^)
+ */
+
 #define scroll_pixels 30
 
 #define font_t "Dejavu Sans Mono"
@@ -105,8 +109,8 @@ void render_page(HTML_elem *page) {
 #define table_bwidth 1
 
 #include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xos.h>
+/*#include <X11/Xutil.h>*/
+/*#include <X11/Xos.h>*/
 
 #include <X11/Xft/Xft.h>
 
@@ -318,7 +322,11 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding) {
   int i,
       maxlen, 
-      bakx = *x;
+      bakx = *x,
+      x1,
+      y1,
+      x2,
+      y2;
   char *draw;
   Text_attr at;
 
@@ -336,6 +344,9 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     }
   } else if (el->t == IMAGE) {
     x_render_image(el, x, y, dpy, xd);
+  } else if (el->t == A) {
+    x1 = *x;
+    y1 = *y - fontsz;
   } else if (el->t == PARAGRAPH 
       || el->t == BREAK_LINE
       || el->t == H1
@@ -489,6 +500,26 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
       x_recursive_render_text(dpy, xd, color, x, y, &el->child[i], maxw, maxh,
         use_padding);
   }
+
+  /* it will not handle links over multiple lines sometimes :^) */
+  /* and TODO: it will not work if the link is an header, or anything, that
+   * returns to the next line after beinng written, so h{1,2,3,4,5,6}
+   */
+  if (el->t == A) {
+    if (*x < x1) {
+      /* there was a breakline */
+      register_click_object(x1, y1, maxw, y1 - fontsz, el);
+      x1 = (use_padding) ? padding : fuck_you_this_is_bak_x;
+      /* y1 doesnt change */
+      x2 = *x;
+      y2 = *y;
+      register_click_object(x1, y1, x2, y2, el);
+    } else {
+      x2 = *x;
+      y2 = *y;
+      register_click_object(x1, y1, x2, y2, el);
+    }
+  }
 }
 
 static void x_init_fonts(Display *dpy, int s, Visual *visual, 
@@ -515,8 +546,11 @@ static void x_render_page(HTML_elem *page) {
       height = 480,
       x_now = padding,
       y_now = padding,
-      force_expose = 0;
-  signed int scroll = 0;
+      force_expose = 0,
+      i;
+  FILE *tmpf;
+  signed int scroll = 0,
+             show_links = 0;
   Window win;
   XEvent ev;
   XWindowAttributes wa;
@@ -526,13 +560,9 @@ static void x_render_page(HTML_elem *page) {
   XftDraw *xd;
   XftColor color,
            bgcolor;
-#ifdef USE_9
-  vlong fn_start = nsec(),
-        fn_end;
-#else
+  HTML_elem *tmp_el;
   clock_t fn_start = clock(),
           fn_end;
-#endif
 
   Display *dpy = XOpenDisplay(NULL);
   if (!dpy) {
@@ -593,21 +623,16 @@ static void x_render_page(HTML_elem *page) {
       width = wa.width;
       height = wa.height;
 
+      clear_click_map();
       fn_start = clock();
       x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
           height, 1);
       fn_end = clock();
       info("%s: x_recursive_render_text() -> took %6.4f",
           __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
-#ifdef USE_9
-      fn_end = nsec();
-      info("%s: x_recursive_render_text() -> took %6.4f",
-          __FILE__, (double)(fn_end - fn_start) / 1000000000);
-#else
-      fn_end = clock();
-      info("%s: x_recursive_render_text() -> took %6.4f",
-          __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
-#endif
+
+      if (show_links)
+        x_draw_click_objects(xd, &color);
 
     } else if (ev.type == KeyPress) {
       XLookupString(&ev.xkey, NULL, 0, &ks, NULL);
@@ -633,9 +658,34 @@ static void x_render_page(HTML_elem *page) {
         case XK_d:
           html_print_tree(page, 0, stdout);
           break;
+        case XK_l:
+          show_links = !show_links;
+          force_expose = 1;
+          break;
       }
     } else if (ev.type == ButtonPress) {
       switch (ev.xkey.keycode) {
+        case Button1:
+          tmp_el = get_object_by_click(ev.xkey.x, ev.xkey.y);
+          if (tmp_el != NULL) {
+            /* TODO: move this to some other place e.g. a function */
+
+            if (tmp_el->t == A) {
+              for (i = 0; i < tmp_el->argc; ++i) {
+                if (strcmp(tmp_el->argv[i][0], "href") == 0) {
+                  tmpf = download_file(tmp_el->argv[i][1]);
+                  free_HTML_elem(page);
+                  page = create_HTML_tree(tmpf);
+                  fclose(tmpf);
+                  force_expose = 1;
+                  scroll = 0;
+                  break;
+                }
+              }
+            }
+          }
+
+          break;
         case Button4:
           if (scroll < 0) {
             ++scroll;
