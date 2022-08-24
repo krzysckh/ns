@@ -13,6 +13,10 @@
 #include <time.h>
 #endif
 
+/* update if needed */
+static int total_hours_wasted_here = 4;
+
+/* :^) */
 static void x_render_page(HTML_elem*);
 static void plan9_render_page(HTML_elem*);
 
@@ -732,18 +736,12 @@ static HTML_elem *root;
 #endif
 
 static uint32_t p9_internal_color_to_rgba(uint32_t c) {
-  uint32_t ret = c;
-#ifdef USE_9
-  /* yeaaah just fuuckin throw it */
-  return c << 8 | (c >> 24) | 0xff;
-#else
-#ifdef __LITTLE_ENDIAN__ || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#if defined(__LITTLE_ENDIAN__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   return c << 8 | (c >> 24) | 0xff;
 #else
 #warning untested :^)
 #warning it will not work probably
   return c << 8 | (c >> 24) | 0xff;
-#endif
 #endif
 }
 
@@ -772,7 +770,6 @@ static int p9_get_maxlen(Image *screen, int *x, int *y, int USEZERO, int bakx) {
 static int p9_approx_td_height(HTML_elem *el, int x, int maxw, int depth) {
   int ret = 0,
       i;
-  char *t;
 
   for (i = 0; i < el->child_n; ++i) {
     ret += p9_approx_td_height(&el->child[i], x, maxw, depth + 1);
@@ -781,9 +778,7 @@ static int p9_approx_td_height(HTML_elem *el, int x, int maxw, int depth) {
     ret += strlen(el->TT_val);
 
   if (depth == 0) {
-    warn("%d", ret);
     ret = fontsz * 2 * (1 + (ret / ((maxw - x) / fontsz / 2)));
-    warn("%d", ret);
   }
 
   return ret;
@@ -809,7 +804,7 @@ static void p9_render_table(Image *screen, HTML_elem *tbl_r, int *x, int *y,
           __FILE__, tbl_r, elemt_to_str(tbl_r->child[i].t));
     } else {
       line(screen, Pt(*x + padding, *y), Pt(maxw - padding, *y),
-          0, 0, 0.5, tmp_img, ZP);
+          0, 0, 0, tmp_img, ZP);
 
       cur_tr = &tbl_r->child[i];
       td_w = td_n = td_max_h = tmp_max_h = 0;
@@ -841,27 +836,26 @@ static void p9_render_table(Image *screen, HTML_elem *tbl_r, int *x, int *y,
         tmpx = *x + (2 * padding) + (j * td_w);
         tmpy = *y + padding;
         line(screen, Pt(*x + (j * td_w) + padding, *y),
-            Pt(*x + (j * td_w) + padding, *y + td_max_h), 0, 0, 0.5, tmp_img,
+            Pt(*x + (j * td_w) + padding, *y + td_max_h), 0, 0, 0, tmp_img,
             ZP);
         p9_recursive_render_text(screen, &cur_tr->child[j], &tmpx, &tmpy, 0, 
             tmpx);
       }
       line(screen, Pt(maxw - padding, *y),
-          Pt(maxw - padding, *y + td_max_h), 0, 0, 0.5, tmp_img,
+          Pt(maxw - padding, *y + td_max_h), 0, 0, 0, tmp_img,
           ZP);
 
       *y += td_max_h;
     }
   }
   line(screen, Pt(*x + padding, *y), Pt(maxw - padding, *y),
-      0, 0, 0.5, tmp_img, ZP);
+      0, 0, 0, tmp_img, ZP);
 }
 
 static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x, 
     int *y, int USEZERO, int bakx) {
   int i,
       maxlen;
-  uint32_t clr;
   Image *tmp_img;
   Point pt = { *x, *y };
   char *draw_me;
@@ -938,6 +932,8 @@ static void plan9_render_page(HTML_elem* page) {
   uint32_t color = 0xffeeffff;
   Event e;
   Mouse m;
+  Menu menu;
+  char *menus[] = {"exit", 0};
   int key;
 
   root = page;
@@ -958,11 +954,19 @@ static void plan9_render_page(HTML_elem* page) {
     err("failed to alloc images");
 
   redraw(screen);
-
   einit(Emouse);
+  menu.item = menus;
+  menu.lasthit = 0;
   while (1) {
     key = event(&e);
-    redraw(screen);
+    switch (key) {
+      case Emouse:
+        m = e.mouse;
+        if (m.buttons & 4)
+          if (emenuhit(3, &m, &menu) == 0)
+            exits(0);
+        break;
+    }
   }
 
   if (getwindow(display, Refnone) < 0)
