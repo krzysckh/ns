@@ -8,9 +8,6 @@
 #include <wctype.h>
 #endif
 
-/* update if needed */
-static int total_hours_wasted_here = 4;
-
 static char *PREDEF_CSS = "\
 * {\
   font-family: Comic Sans MS;\

@@ -13,9 +13,6 @@
 #include <time.h>
 #endif
 
-/* update if needed */
-static int total_hours_wasted_here = 4;
-
 /* :^) */
 static void x_render_page(HTML_elem*);
 static void plan9_render_page(HTML_elem*);
