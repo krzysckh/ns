@@ -1,4 +1,4 @@
-OS=unix
+OS=plan9port
 # unix - compiles a version for linux/*BSD etc
 # plan9 - compiles a version for plan9/9front
 # plan9port - compiles a version for plan9port
@@ -36,6 +36,8 @@ CFLAGS=\
 all: $(OFILES)
 .if ${OS} == "plan9" 
 	mk
+.elif ${OS} == "plan9port"
+	$(LD) $(OFILES) -o $(TARGET) $(LDFLAGS)
 .else
 	$(CC) $(OFILES) -o $(TARGET) $(LDFLAGS)
 .endif

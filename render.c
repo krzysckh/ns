@@ -711,10 +711,12 @@ endloop:
 #endif
 #ifdef USE_9
 
+static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x, 
+    int *y, int USEZERO, int bakx);
 static Image *bg;
 static HTML_elem *root;
-static int *x,
-           *y;
+/*static int *x,
+           *y;*/
 #ifdef PLAN9PORT
 #define fontsz atoi(FONTSIZE9)
 #else
@@ -750,14 +752,14 @@ static uint32_t p9_internal_color_to_rgba(uint32_t c) {
  * and i know it's going to be wrong
  * :^)
  */
-static int p9_get_maxlen(Image *screen) {
+static int p9_get_maxlen(Image *screen, int *x, int *y, int USEZERO, int bakx) {
   int ret;
 
   if (Dx(screen->r) - *x <= 0) {
     *y += fontsz + padding;
-    *x = ZERO;
+    *x = USEZERO ? ZERO : bakx;
   }
-  ret = (Dx(screen->r) - *x) / (fontsz / 2);
+  ret = (Dx(screen->r) - *x) / (fontsz /*/ 2*/);
   if (ret < 1)
     return 1;
   else
@@ -767,7 +769,96 @@ static int p9_get_maxlen(Image *screen) {
   return ret;
 }
 
-static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
+static int p9_approx_td_height(HTML_elem *el, int x, int maxw, int depth) {
+  int ret = 0,
+      i;
+  char *t;
+
+  for (i = 0; i < el->child_n; ++i) {
+    ret += p9_approx_td_height(&el->child[i], x, maxw, depth + 1);
+  }
+  if (el->t == TEXT_TYPE)
+    ret += strlen(el->TT_val);
+
+  if (depth == 0) {
+    warn("%d", ret);
+    ret = fontsz * 2 * (1 + (ret / ((maxw - x) / fontsz / 2)));
+    warn("%d", ret);
+  }
+
+  return ret;
+}
+
+static void p9_render_table(Image *screen, HTML_elem *tbl_r, int *x, int *y,
+    int maxw, int maxh) {
+  int i,
+      j,
+      td_n,
+      td_w,
+      td_max_h = 0,
+      tmp_max_h = 0,
+      tmpx = *x,
+      tmpy = *y;
+  HTML_elem *cur_tr;
+  Image *tmp_img = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1,
+      p9_internal_color_to_rgba(0x000000));
+
+  for (i = 0; i < tbl_r->child_n; ++i) {
+    if (tbl_r->child[i].t != TABLE_TR) {
+      warn("%s: child of table %p is not type TABLE_TR (%s) - skipping", 
+          __FILE__, tbl_r, elemt_to_str(tbl_r->child[i].t));
+    } else {
+      line(screen, Pt(*x + padding, *y), Pt(maxw - padding, *y),
+          0, 0, 0.5, tmp_img, ZP);
+
+      cur_tr = &tbl_r->child[i];
+      td_w = td_n = td_max_h = tmp_max_h = 0;
+
+      for (j = 0; j < cur_tr->child_n; ++j) {
+        if (cur_tr->child[i].t != TABLE_TH && cur_tr->child[i].t != TABLE_TD) {
+          warn("%s: child of TABLE_TR %p is not type TABLE_TH or TABLE_TD (%s)",
+              __FILE__, cur_tr, elemt_to_str(cur_tr->child[i].t));
+        } else {
+          ++td_n;
+        }
+      }
+
+      if (td_n != cur_tr->child_n) {
+        warn("%s: bad html on elem %p", __FILE__, cur_tr);
+        return;
+        /* problem solved. i hate myself :^) */
+      }
+
+      for (j = 0; j < td_n; ++j) {
+        tmp_max_h = p9_approx_td_height(&cur_tr->child[i], *x, maxw, 0);
+        tmp_max_h += 2 * padding;
+        td_max_h = (tmp_max_h > td_max_h) ? tmp_max_h : td_max_h;
+      }
+
+      td_w = (maxw - *x) / td_n;
+
+      for (j = 0; j < td_n; ++j) {
+        tmpx = *x + (2 * padding) + (j * td_w);
+        tmpy = *y + padding;
+        line(screen, Pt(*x + (j * td_w) + padding, *y),
+            Pt(*x + (j * td_w) + padding, *y + td_max_h), 0, 0, 0.5, tmp_img,
+            ZP);
+        p9_recursive_render_text(screen, &cur_tr->child[j], &tmpx, &tmpy, 0, 
+            tmpx);
+      }
+      line(screen, Pt(maxw - padding, *y),
+          Pt(maxw - padding, *y + td_max_h), 0, 0, 0.5, tmp_img,
+          ZP);
+
+      *y += td_max_h;
+    }
+  }
+  line(screen, Pt(*x + padding, *y), Pt(maxw - padding, *y),
+      0, 0, 0.5, tmp_img, ZP);
+}
+
+static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x, 
+    int *y, int USEZERO, int bakx) {
   int i,
       maxlen;
   uint32_t clr;
@@ -779,10 +870,16 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
 
   if (el->t == PARAGRAPH) {
     *y += fontsz + (padding * 2);
-    *x = ZERO;
-  }
-
-  if (el->t == TEXT_TYPE) {
+    *x = USEZERO ? ZERO : bakx;
+  } else if (el->t == TABLE) {
+    *y += fontsz + (padding * 2);
+    *x = USEZERO ? ZERO : bakx;
+    p9_render_table(screen, el, x, y, screen->r.max.x, screen->r.max.y);
+    return;
+  } else if (el->t == STYLE || el->t == SCRIPT) {
+    /* just don't draw them lol */
+    return;
+  } if (el->t == TEXT_TYPE) {
     for (i = 0; i < el->css.o_n; ++i)
       if (el->css.o[i].t == COLOR)
         break;
@@ -790,26 +887,26 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el) {
     draw_me = el->TT_val;
 
     while (*draw_me) {
-      maxlen = p9_get_maxlen(screen);
+      maxlen = p9_get_maxlen(screen, x, y, USEZERO, bakx);
 
       /*warn("color =  0x%08x", p9_internal_color_to_rgba(el->css.o[i].v));*/
       tmp_img = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1,
           p9_internal_color_to_rgba(el->css.o[i].v));
 
-      pt = stringn(screen, Pt(*x, *y), tmp_img, ZP, font, el->TT_val,
+      pt = stringn(screen, Pt(*x, *y), tmp_img, ZP, font, draw_me,
           (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me));
       *x = pt.x;
       *y = pt.y;
 
       draw_me += (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me);
       if (*draw_me) {
-        *x = ZERO;
+        *x = USEZERO ? ZERO : bakx;
         *y += fontsz + padding;
       }
     }
   } else {
     for (i = 0; i < el->child_n; ++i)
-      p9_recursive_render_text(screen, &el->child[i]);
+      p9_recursive_render_text(screen, &el->child[i], x, y, USEZERO, bakx);
   }
 }
 
@@ -821,12 +918,12 @@ static void redraw(Image *screen) {
   int x_r = screen->r.min.x,
       y_r = screen->r.min.y;
 #endif
-  x = &x_r;
-  y = &y_r;
+  /*x = &x_r;*/
+  /*y = &y_r;*/
 
   /*warn("%d", Dx(screen->r));*/
   draw(screen, screen->r, bg, nil, ZP);
-  p9_recursive_render_text(screen, root);
+  p9_recursive_render_text(screen, root, &x_r, &y_r, 1, 0);
 
   flushimage(display, Refnone);
 }
@@ -838,7 +935,7 @@ void eresized(int new) {
 }
 
 static void plan9_render_page(HTML_elem* page) {
-  uint32_t color = 0xdededeff;
+  uint32_t color = 0xffeeffff;
   Event e;
   Mouse m;
   int key;
