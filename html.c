@@ -37,6 +37,7 @@ const char *elemt_to_str(HTML_elem_type t) {
     case STYLE: return "style";
     case SCRIPT: return "script";
     case META: return "meta";
+    case LINK: return "link";
     case UNKNOWN: return "unknown";
     case TEXT_TYPE: return "text_type";
     case CSS_ALL_SELECTORS: return "(css) *";
@@ -165,6 +166,7 @@ HTML_elem_type get_elem_type(char *text) {
   else if (strcmp(lcase, "script") == 0) ret = SCRIPT;
 
   else if (strcmp(lcase, "meta") == 0) ret = META;
+  else if (strcmp(lcase, "link") == 0) ret = LINK;
 
   else if (strcmp(lcase, "*") == 0) ret = CSS_ALL_SELECTORS;
   /* it does not check what the calling function is

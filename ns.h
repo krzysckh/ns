@@ -61,6 +61,7 @@ typedef enum {
   SCRIPT, 
 
   META,
+  LINK,
 
   UNKNOWN,
 

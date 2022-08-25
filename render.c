@@ -338,8 +338,6 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   char *draw;
   Text_attr at;
 
-  calculate_css(el);
-
   if (el->t == TABLE) {
     x_render_table(dpy, xd, color, x, y, el, maxw, maxh);
     return;
@@ -367,9 +365,13 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     if (use_padding)
       *y = *y + (fontsz * 2);
     *x = (use_padding) ? padding : fuck_you_this_is_bak_x;
-  } else if (el->t == STYLE || el->t == SCRIPT) {
+  } else if (el->t == STYLE || el->t == SCRIPT || el->t == LINK) {
     return;
-  } else if (el->t == TEXT_TYPE) {
+  } 
+
+  calculate_css(el);
+
+  if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
     get_text_attr(el, &at, 0);
 
