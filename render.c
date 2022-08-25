@@ -1,7 +1,8 @@
 #include "ns.h"
 
 #ifdef USE_9
-#include <draw.h>
+/* included in ns.h */
+/*#include <draw.h>*/
 #include <cursor.h>
 #include <event.h>
 #else
@@ -930,14 +931,11 @@ static void redraw(Image *screen) {
   int x_r = screen->r.min.x,
       y_r = screen->r.min.y;
 #endif
-  /*x = &x_r;*/
-  /*y = &y_r;*/
 
-  /*warn("%d", Dx(screen->r));*/
   draw(screen, screen->r, bg, nil, ZP);
   clear_click_map();
   p9_recursive_render_text(screen, root, &x_r, &y_r, 1, 0);
-  p9_draw_click_objects(screen);
+  /*p9_draw_click_objects(screen);*/
 
   flushimage(display, Refnone);
 }
@@ -966,8 +964,7 @@ static void plan9_render_page(HTML_elem* page) {
     sysfatal("%s: %r", argv0);
 #else
   /* we aint doin any of that shit here */
-  if (initdraw(nil, nil, argv0)
-      < 0)
+  if (initdraw(nil, nil, argv0) < 0)
     sysfatal("%s: %r", argv0);
 #endif
 

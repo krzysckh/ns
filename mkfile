@@ -4,7 +4,7 @@ LD=8l
 
 TARGET=ns
 
-OFILES=ns.cpp.o html.cpp.o render.cpp.o css.cpp.o net.cpp.o
+OFILES=ns.cpp.o html.cpp.o render.cpp.o css.cpp.o net.cpp.o click.cpp.o
 
 CPPFLAGS=-DUSE_9 -DDUMB_WARNINGS
 

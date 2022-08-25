@@ -77,7 +77,8 @@ void x_draw_click_objects(XftDraw *xd, XftColor *color) {
 }
 #endif
 #ifdef USE_9
-#include <draw.h>
+/* included from ns.h */
+/*#include <draw.h>*/
 void p9_draw_click_objects(Image *screen) {
   int i;
   Image *c = allocimage(display, Rect(0,0,1,1), RGB24, 1, 0xff00ff55);
