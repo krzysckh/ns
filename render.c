@@ -30,6 +30,8 @@ typedef struct {
   uint8_t h6;
 
   uint8_t table;
+
+  uint8_t anchor;
 } Text_attr;
 
 void init_text_attr(Text_attr *attr) {
@@ -46,6 +48,8 @@ void init_text_attr(Text_attr *attr) {
   attr->table = 0;
 
   attr->paragraph = 0;
+
+  attr->anchor = 0;
 }
 
 void get_text_attr(HTML_elem *el, Text_attr *attr, int forwards) {
@@ -60,6 +64,8 @@ void get_text_attr(HTML_elem *el, Text_attr *attr, int forwards) {
   if (el->t == H4) attr->h4 ++;
   if (el->t == H5) attr->h5 ++;
   if (el->t == H6) attr->h6 ++;
+
+  if (el->t == A) attr->anchor ++;
 
   if (el->t == TABLE) attr->table++;
 
@@ -852,10 +858,13 @@ static void p9_render_table(Image *screen, HTML_elem *tbl_r, int *x, int *y,
 static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x, 
     int *y, int USEZERO, int bakx) {
   int i,
-      maxlen;
+      maxlen,
+      a_x1,
+      a_y1;
   Image *tmp_img;
   Point pt = { *x, *y };
   char *draw_me;
+  Text_attr ta;
 
   calculate_css(el);
 
@@ -867,10 +876,16 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x,
     *x = USEZERO ? ZERO : bakx;
     p9_render_table(screen, el, x, y, screen->r.max.x, screen->r.max.y);
     return;
+  } else if (el->t == A) {
+    a_x1 = *x;
+    a_y1 = *y - fontsz;
   } else if (el->t == STYLE || el->t == SCRIPT) {
     /* just don't draw them lol */
     return;
   } if (el->t == TEXT_TYPE) {
+    init_text_attr(&ta);
+    get_text_attr(el, &ta, 0);
+
     for (i = 0; i < el->css.o_n; ++i)
       if (el->css.o[i].t == COLOR)
         break;
@@ -879,6 +894,10 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x,
 
     while (*draw_me) {
       maxlen = p9_get_maxlen(screen, x, y, USEZERO, bakx);
+      if (ta.anchor) {
+        a_x1 = *x;
+        a_y1 = *y;
+      }
 
       /*warn("color =  0x%08x", p9_internal_color_to_rgba(el->css.o[i].v));*/
       tmp_img = allocimage(display, Rect(0, 0, 1, 1), RGB24, 1,
@@ -888,6 +907,8 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x,
           (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me));
       *x = pt.x;
       *y = pt.y;
+      if (ta.anchor)
+        register_click_object(a_x1, a_y1, *x, *y + (2 * fontsz), el->parent);
 
       draw_me += (strlen(draw_me) > maxlen) ? maxlen : strlen(draw_me);
       if (*draw_me) {
@@ -914,7 +935,9 @@ static void redraw(Image *screen) {
 
   /*warn("%d", Dx(screen->r));*/
   draw(screen, screen->r, bg, nil, ZP);
+  clear_click_map();
   p9_recursive_render_text(screen, root, &x_r, &y_r, 1, 0);
+  p9_draw_click_objects(screen);
 
   flushimage(display, Refnone);
 }
@@ -926,12 +949,14 @@ void eresized(int new) {
 }
 
 static void plan9_render_page(HTML_elem* page) {
+  int key,
+      i;
   uint32_t color = 0xffeeffff;
   Event e;
   Mouse m;
   Menu menu;
   char *menus[] = {"exit", 0};
-  int key;
+  HTML_elem *tmp_el;
 
   root = page;
 
@@ -959,9 +984,20 @@ static void plan9_render_page(HTML_elem* page) {
     switch (key) {
       case Emouse:
         m = e.mouse;
-        if (m.buttons & 4)
-          if (emenuhit(3, &m, &menu) == 0)
+        if (m.buttons & 4) {
+          if (emenuhit(3, &m, &menu) == 0) {
             exits(0);
+          }
+        } else if (m.buttons & 1) {
+          if ((tmp_el = get_object_by_click(m.xy.x, m.xy.y)) != NULL) {
+            for (i = 0; i < tmp_el->argc; ++i) {
+              if (strcmp(tmp_el->argv[i][0], "href") == 0) {
+                info("%s: you fool! i didn't implement webfs support yet!",
+                    __FILE__);
+              }
+            }
+          }
+        }
         break;
     }
   }

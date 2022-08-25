@@ -144,6 +144,11 @@ void clear_click_map();
 void x_draw_click_objects(XftDraw *xd, XftColor *color);
 #endif
 
+#ifdef USE_9
+#include <draw.h>
+void p9_draw_click_objects(Image *screen);
+#endif
+
 void err(char *fmt, ...);
 void warn(char *fmt, ...);
 void info(char *fmt, ...);

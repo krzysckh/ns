@@ -39,6 +39,7 @@ void clear_click_map() {
 }
 
 void register_click_object(int x1, int y1, int x2, int y2, HTML_elem *el) {
+  /*warn("registered %p [%d, %d] -> [%d, %d]", el, x1, y1, x2, y2);*/
   cm.c = realloc(cm.c, (cm.c_n + 1) * sizeof(struct Click_object));
   cm.c[cm.c_n].x1 = x1;
   cm.c[cm.c_n].y1 = y1;
@@ -72,6 +73,17 @@ void x_draw_click_objects(XftDraw *xd, XftColor *color) {
   for (i = 0; i < cm.c_n; ++i) {
     XftDrawRect(xd, color, cm.c[i].x1, cm.c[i].y1, cm.c[i].x2 - cm.c[i].x1,
         cm.c[i].y2 - cm.c[i].y1);
+  }
+}
+#endif
+#ifdef USE_9
+#include <draw.h>
+void p9_draw_click_objects(Image *screen) {
+  int i;
+  Image *c = allocimage(display, Rect(0,0,1,1), RGB24, 1, 0xff00ff55);
+  for (i = 0; i < cm.c_n; ++i) {
+    border(screen, Rect(cm.c[i].x1, cm.c[i].y1, cm.c[i].x2, cm.c[i].y2), -1,
+        c, ZP);
   }
 }
 #endif
