@@ -251,22 +251,20 @@ void calculate_css(HTML_elem *el) {
 
   stl = find_styles(get_root_from_elem(el));
 
-  if (el->t == ROOT) {
-    if (stl == NULL) {
-      stl = malloc(strlen(PREDEF_CSS) + 1);
-      strcpy(stl, PREDEF_CSS);
-      stl[strlen(PREDEF_CSS)] = 0;
-    } else {
-      len = strlen(stl);
-      stl = realloc(stl, len + strlen(PREDEF_CSS) + 1);
-      tmp_val = malloc(len + strlen(PREDEF_CSS) + 1);
-      strcpy(tmp_val, PREDEF_CSS);
-      strcat(tmp_val, stl);
-      strcpy(stl, tmp_val);
+  if (stl == NULL) {
+    stl = malloc(strlen(PREDEF_CSS) + 1);
+    strcpy(stl, PREDEF_CSS);
+    stl[strlen(PREDEF_CSS)] = 0;
+  } else {
+    len = strlen(stl);
+    stl = realloc(stl, len + strlen(PREDEF_CSS) + 1);
+    tmp_val = malloc(len + strlen(PREDEF_CSS) + 1);
+    strcpy(tmp_val, PREDEF_CSS);
+    strcat(tmp_val, stl);
+    strcpy(stl, tmp_val);
 
-      stl[strlen(PREDEF_CSS) + len] = 0;
-      free(tmp_val);
-    }
+    stl[strlen(PREDEF_CSS) + len] = 0;
+    free(tmp_val);
   }
 
   orig_stl = stl;
@@ -290,7 +288,8 @@ void calculate_css(HTML_elem *el) {
     }
 
     if (tmp_type != el->t && tmp_type != CSS_ALL_SELECTORS)
-      goto next;
+      if (!(el->parent->t == tmp_type && el->t == TEXT_TYPE))
+        goto next;
 
     while (*stl++ != '{')
       ;
