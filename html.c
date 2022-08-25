@@ -344,7 +344,7 @@ HTML_elem *create_HTML_tree(FILE *fp) {
       } else {
         /*printf("text - 2 = %s\n", text-2);*/
         if (*(text-2) == '/' || tmp_t == IMAGE || tmp_t == BREAK_LINE 
-            || tmp_t == META) {
+            || tmp_t == META || tmp_t == LINK) {
           /*info("giga kutas");*/
           cur->child_n++;
           cur->child = realloc(cur->child, sizeof(HTML_elem) * cur->child_n);
