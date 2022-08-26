@@ -722,7 +722,7 @@ endloop:
 #ifdef USE_9
 
 static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x, 
-    int *y, int USEZERO, int bakx);
+    int *y, int maxw, int USEZERO, int bakx);
 static Image *bg;
 static HTML_elem *root;
 /*static int *x,
@@ -756,14 +756,15 @@ static uint32_t p9_internal_color_to_rgba(uint32_t c) {
  * and i know it's going to be wrong
  * :^)
  */
-static int p9_get_maxlen(Image *screen, int *x, int *y, int USEZERO, int bakx) {
+static int p9_get_maxlen(Image *screen, int *x, int *y, int maxw, int USEZERO,
+    int bakx) {
   int ret;
 
-  if (Dx(screen->r) - *x <= 0) {
+  if (maxw - *x <= 0) {
     *y += fontsz + padding;
     *x = USEZERO ? ZERO : bakx;
   }
-  ret = (Dx(screen->r) - *x) / (fontsz /*/ 2*/);
+  ret = (maxw - *x) / (fontsz /*/ 2*/);
   if (ret < 1)
     return 1;
   else
@@ -844,8 +845,8 @@ static void p9_render_table(Image *screen, HTML_elem *tbl_r, int *x, int *y,
         line(screen, Pt(*x + (j * td_w) + padding, *y),
             Pt(*x + (j * td_w) + padding, *y + td_max_h), 0, 0, 0, tmp_img,
             ZP);
-        p9_recursive_render_text(screen, &cur_tr->child[j], &tmpx, &tmpy, 0, 
-            tmpx);
+        p9_recursive_render_text(screen, &cur_tr->child[j], &tmpx, &tmpy, 
+            tmpx + td_w - (2*padding), 0, tmpx);
       }
       line(screen, Pt(maxw - padding, *y),
           Pt(maxw - padding, *y + td_max_h), 0, 0, 0, tmp_img,
@@ -859,7 +860,7 @@ static void p9_render_table(Image *screen, HTML_elem *tbl_r, int *x, int *y,
 }
 
 static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x, 
-    int *y, int USEZERO, int bakx) {
+    int *y, int maxw, int USEZERO, int bakx) {
   int i,
       maxlen,
       a_x1,
@@ -896,7 +897,7 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x,
     draw_me = el->TT_val;
 
     while (*draw_me) {
-      maxlen = p9_get_maxlen(screen, x, y, USEZERO, bakx);
+      maxlen = p9_get_maxlen(screen, x, y, maxw, USEZERO, bakx);
       if (ta.anchor) {
         a_x1 = *x;
         a_y1 = *y;
@@ -921,7 +922,8 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x,
     }
   } else {
     for (i = 0; i < el->child_n; ++i)
-      p9_recursive_render_text(screen, &el->child[i], x, y, USEZERO, bakx);
+      p9_recursive_render_text(screen, &el->child[i], x, y, maxw, USEZERO,
+          bakx);
   }
 }
 
@@ -936,7 +938,11 @@ static void redraw(Image *screen) {
 
   draw(screen, screen->r, bg, nil, ZP);
   clear_click_map();
-  p9_recursive_render_text(screen, root, &x_r, &y_r, 1, 0);
+#ifdef PLAN9PORT
+  p9_recursive_render_text(screen, root, &x_r, &y_r, Dx(screen->r), 1, 0);
+#else
+  p9_recursive_render_text(screen, root, &x_r, &y_r, Dx(screen->r) + x_r, 1, 0);
+#endif
   /*p9_draw_click_objects(screen);*/
 
   flushimage(display, Refnone);

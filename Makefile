@@ -1,4 +1,4 @@
-OS=unix
+OS=plan9port
 # unix - compiles a version for linux/*BSD etc
 # plan9 - compiles a version for plan9/9front
 # plan9port - compiles a version for plan9port
