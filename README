@@ -19,6 +19,8 @@ plan9:
   ; mk
   ; ./ns
 
+note: on GNU/Linux you might need to install BSD-compatible make (e.g. bmake)
+
 references
 ----------
 - https://github.com/jsynacek/xft-example/blob/master/main.c

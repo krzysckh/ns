@@ -26,7 +26,7 @@ CFLAGS=\
 	-DUSE_9 \
 	-DDUMB_WARNINGS \
 	-DPLAN9PORT_BASEDIR=\"$(PLAN9PORT_BASEDIR)\" \
-	-DFONTDIR9=\"/usr/local/plan9/font\" \
+	-DFONTDIR9=\"$(PLAN9PORT_BASEDIR)/font\" \
 	-DFONTTYPE9=\"lucsans\" \
 	-DFONTNAME9=\"typeunicode\" \
 	-DFONTSIZE9=\"7\"

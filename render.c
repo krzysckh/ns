@@ -725,8 +725,7 @@ static void p9_recursive_render_text(Image *screen, HTML_elem *el, int *x,
     int *y, int maxw, int USEZERO, int bakx);
 static Image *bg;
 static HTML_elem *root;
-/*static int *x,
-           *y;*/
+static int showlinks;
 #ifdef PLAN9PORT
 #define fontsz atoi(FONTSIZE9)
 #else
@@ -943,7 +942,8 @@ static void redraw(Image *screen) {
 #else
   p9_recursive_render_text(screen, root, &x_r, &y_r, Dx(screen->r) + x_r, 1, 0);
 #endif
-  /*p9_draw_click_objects(screen);*/
+  if (showlinks)
+    p9_draw_click_objects(screen);
 
   flushimage(display, Refnone);
 }
@@ -961,7 +961,7 @@ static void plan9_render_page(HTML_elem* page) {
   Event e;
   Mouse m;
   Menu menu;
-  char *menus[] = {"exit", 0};
+  char *menus[] = {"exit", "toggle link view", 0};
   HTML_elem *tmp_el;
 
   root = page;
@@ -983,15 +983,21 @@ static void plan9_render_page(HTML_elem* page) {
   redraw(screen);
   einit(Emouse);
   menu.item = menus;
-  menu.lasthit = 0;
+  menu.lasthit = 1;
   while (1) {
     key = event(&e);
     switch (key) {
       case Emouse:
         m = e.mouse;
         if (m.buttons & 4) {
-          if (emenuhit(3, &m, &menu) == 0) {
-            exits(0);
+          switch (emenuhit(3, &m, &menu)) {
+            case 0:
+              exits(0);
+              break;
+            case 1:
+              showlinks = !showlinks;
+              redraw(screen);
+              break;
           }
         } else if (m.buttons & 1) {
           if ((tmp_el = get_object_by_click(m.xy.x, m.xy.y)) != NULL) {
