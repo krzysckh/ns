@@ -14,6 +14,63 @@
 #include <time.h>
 #endif
 
+/* so - the page rendering is slow if everything is calculated everytime 
+ * an event happens. my idea: create a RenderMap that holds text and how it
+ * should be rendered, so it has to be calculated once - when the page loads,
+ * and then it just uses the RenderMap to render elements
+ *
+ * - replace all calls to libxft || string() via draw.h with calls to
+ *   rendermap_add()
+ * - when loading new webpage call rendermap_clear()
+ */
+
+typedef struct {
+  char **v; /* value */
+  int *x;
+  int *y;
+  Calculated_CSS **css; /* css */
+
+  int rm_sz;
+} RenderMap_t;
+
+static RenderMap_t g_render_map = { .v = NULL, .x = NULL, .y = NULL, 
+  .css = NULL, .rm_sz = 0 };
+
+static void rendermap_add(int x, int y, char *v, Calculated_CSS *css, int l) {
+  g_render_map.x = realloc(g_render_map.x, sizeof(int) * 
+      (g_render_map.rm_sz + 1));
+  g_render_map.y = realloc(g_render_map.y, sizeof(int) * 
+      (g_render_map.rm_sz + 1));
+  g_render_map.v = realloc(g_render_map.v, sizeof(char *) *
+      (g_render_map.rm_sz + 1));
+  g_render_map.css = realloc(g_render_map.css, sizeof(Calculated_CSS *) *
+      (g_render_map.rm_sz + 1));
+
+  g_render_map.x[g_render_map.rm_sz] = x;
+  g_render_map.y[g_render_map.rm_sz] = y;
+  g_render_map.v[g_render_map.rm_sz] = malloc(l + 1);
+  strncpy(g_render_map.v[g_render_map.rm_sz], v, l);
+  g_render_map.v[g_render_map.rm_sz][l] = 0;
+  g_render_map.css[g_render_map.rm_sz] = css; /* just copy the pointer */
+
+  g_render_map.rm_sz++;
+}
+
+static void rendermap_clear() {
+  free(g_render_map.x);
+  free(g_render_map.y);
+  free(g_render_map.css);
+  free(g_render_map.v);
+
+  g_render_map.x = g_render_map.y = NULL;
+  g_render_map.v = NULL;
+  g_render_map.css = NULL;
+  /* so realloc() won't crash */
+  g_render_map.rm_sz = 0;
+}
+
+/* rendermap_render() will be declared later for USE_X and USE_9 */
+
 /* :^) */
 static void x_render_page(HTML_elem*);
 static void plan9_render_page(HTML_elem*);
@@ -163,6 +220,43 @@ static void x_load_render_destroy(const char *fontn, const char *txt,
 
   XftDrawStringUtf8(xd, &c, fnt, x, y, (const FcChar8*)txt, len);
   XftColorFree(dpy, DefaultVisual(dpy, s), DefaultColormap(dpy, s), &c);
+}
+
+static void rendermap_render(Display *dpy, XftDraw *xd) {
+  int i,
+      j,
+      sz;
+  char *clr,
+       *fnt,
+       *fntstr;
+  warn("%s: render me daddy", __FILE__);
+  for (i = 0; i < g_render_map.rm_sz; ++i) {
+    clr = NULL, fnt = NULL;
+    for (j = 0; j < g_render_map.css[i]->o_n; ++j) {
+      switch (g_render_map.css[i]->o[j].t) {
+        case COLOR:
+          clr = internal_color_to_str(g_render_map.css[i]->o[j].v);
+          break;
+        case FONT_FAMILY:
+          fnt = g_render_map.css[i]->o[j].v_str;
+          break;
+      }
+    }
+
+    fntstr = alloca(strlen(fnt) + 30);
+    /* 30 -> len of :pixelsize=lotofnumbersarehere */
+
+    /* TODO: css font-size and change this 2 to actual n of digits in font-size
+     * and change fontsz macro call to actual font-size
+     */
+    snprintf(fntstr, strlen(fnt) + strlen(":pixelsize=") + 3, "%s:pixelsize=%d",
+        fnt, fontsz);
+
+    x_load_render_destroy(fntstr, g_render_map.v[i], clr, g_render_map.x[i],
+        g_render_map.y[i], strlen(g_render_map.v[i]), dpy, xd);
+
+    free(clr);
+  }
 }
 
 /* needed for x_table_approx_height */
@@ -484,8 +578,10 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
         snprintf(fontstr, 1024, "%s:pixelsize=%d:style=%s", l_font_t,
             l_font_sz, "Normal");
-        x_load_render_destroy(fontstr, draw, l_font_color, *x, *y,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
+        rendermap_add(*x, *y, el->TT_val + (el->TT_val - draw), &el->css,
+          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));
+        /*x_load_render_destroy(fontstr, draw, l_font_color, *x, *y,*/
+          /*((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);*/
         free(l_font_color);
       }
         /*XftDrawStringUtf8(xd, color, font_n, *x, *y, (const FcChar8*)draw,*/
@@ -635,8 +731,13 @@ static void x_render_page(HTML_elem *page) {
 
       clear_click_map();
       fn_start = clock();
+      /* rn rendermap actually slows everything down, but once it's finished
+       * it _should_ give some speed ups
+       */
+      rendermap_clear();
       x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
           height, 1);
+      rendermap_render(dpy, xd);
       fn_end = clock();
       info("%s: x_recursive_render_text() -> took %6.4f",
           __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
