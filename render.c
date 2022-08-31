@@ -243,7 +243,7 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
       }
     }
 
-    fntstr = alloca(strlen(fnt) + 30);
+    fntstr = malloc(strlen(fnt) + 30);
     /* 30 -> len of :pixelsize=lotofnumbersarehere */
 
     /* TODO: css font-size and change this 2 to actual n of digits in font-size
@@ -256,6 +256,7 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
         g_render_map.y[i], strlen(g_render_map.v[i]), dpy, xd);
 
     free(clr);
+    free(fntstr);
   }
 }
 
