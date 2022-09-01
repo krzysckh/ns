@@ -284,13 +284,12 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
 
     snprintf(fntstr, strlen(fnt) + strlen(":pixelsize=") + 1 + intlen(sz),
         "%s:pixelsize=%d", fnt, sz);
-    warn("fntstr: %s", fntstr);
 
     x_load_render_destroy(fntstr, g_render_map.v[i], clr, g_render_map.x[i],
         g_render_map.y[i], strlen(g_render_map.v[i]), dpy, xd);
 
-    free(fntstr);
     free(clr);
+    free(fntstr);
   }
 }
 
