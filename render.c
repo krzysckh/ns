@@ -57,10 +57,15 @@ static void rendermap_add(int x, int y, char *v, Calculated_CSS *css, int l) {
 }
 
 static void rendermap_clear() {
+  int i;
+
+  for (i = 0; i < g_render_map.rm_sz; ++i)
+    free(g_render_map.v[i]);
+
+  free(g_render_map.v);
   free(g_render_map.x);
   free(g_render_map.y);
   free(g_render_map.css);
-  free(g_render_map.v);
 
   g_render_map.x = g_render_map.y = NULL;
   g_render_map.v = NULL;
@@ -220,6 +225,7 @@ static void x_load_render_destroy(const char *fontn, const char *txt,
 
   XftDrawStringUtf8(xd, &c, fnt, x, y, (const FcChar8*)txt, len);
   XftColorFree(dpy, DefaultVisual(dpy, s), DefaultColormap(dpy, s), &c);
+  XftFontClose(dpy, fnt);
 }
 
 static int intlen(int x) {
@@ -284,6 +290,7 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
 
     snprintf(fntstr, strlen(fnt) + strlen(":pixelsize=") + 1 + intlen(sz),
         "%s:pixelsize=%d", fnt, sz);
+    /*warn("fontstr = %s", fntstr);*/
 
     x_load_render_destroy(fntstr, g_render_map.v[i], clr, g_render_map.x[i],
         g_render_map.y[i], strlen(g_render_map.v[i]), dpy, xd);
