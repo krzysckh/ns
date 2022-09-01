@@ -222,10 +222,28 @@ static void x_load_render_destroy(const char *fontn, const char *txt,
   XftColorFree(dpy, DefaultVisual(dpy, s), DefaultColormap(dpy, s), &c);
 }
 
+static int intlen(int x) {
+  /* DON'T LAUGH!
+   * it's the fastest solution according to
+   * https://stackoverflow.com/questions/3068397/
+     finding-the-length-of-an-integer-in-c
+   */
+  if (x >= 1000000000) return 10;
+  if (x >= 100000000) return 9;
+  if (x >= 10000000) return 8;
+  if (x >= 1000000) return 7;
+  if (x >= 100000) return 6;
+  if (x >= 10000) return 5;
+  if (x >= 1000) return 4;
+  if (x >= 100) return 3;
+  if (x >= 10) return 2;
+  return 1;
+}
+
 static void rendermap_render(Display *dpy, XftDraw *xd) {
   int i,
       j,
-      sz;
+      sz = -1;
   char *clr,
        *fnt,
        *fntstr;
@@ -240,21 +258,38 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
         case FONT_FAMILY:
           fnt = g_render_map.css[i]->o[j].v_str;
           break;
+        case FONTSIZE:
+          switch (g_render_map.css[i]->o[j].m) {
+            case M_INCH:
+              warn("%s: inch not implemented. setting px (at %p)",
+                  __FILE__, g_render_map.css[i]);
+            case M_PIXEL:
+              sz = g_render_map.css[i]->o[j].v;
+              break;
+            case M_PERCENT:
+              warn("%s: %% not implemented. defalulting to 15px (at %p)",
+                  __FILE__, g_render_map.css[i]);
+              sz = 15;
+          }
+          break;
       }
     }
 
-    fntstr = alloca(strlen(fnt) + 30);
-    /* 30 -> len of :pixelsize=lotofnumbersarehere */
+    if (sz < 0) {
+      warn("%s: sz < 0 at %p - defaulting to 15px", __FILE__,
+          g_render_map.css[i]);
+    }
 
-    /* TODO: css font-size and change this 2 to actual n of digits in font-size
-     * and change fontsz macro call to actual font-size
-     */
-    snprintf(fntstr, strlen(fnt) + strlen(":pixelsize=") + 3, "%s:pixelsize=%d",
-        fnt, fontsz);
+    fntstr = malloc(strlen(fnt) + intlen(sz));
+
+    snprintf(fntstr, strlen(fnt) + strlen(":pixelsize=") + 1 + intlen(sz),
+        "%s:pixelsize=%d", fnt, sz);
+    warn("fntstr: %s", fntstr);
 
     x_load_render_destroy(fntstr, g_render_map.v[i], clr, g_render_map.x[i],
         g_render_map.y[i], strlen(g_render_map.v[i]), dpy, xd);
 
+    free(fntstr);
     free(clr);
   }
 }
@@ -739,7 +774,7 @@ static void x_render_page(HTML_elem *page) {
           height, 1);
       rendermap_render(dpy, xd);
       fn_end = clock();
-      info("%s: x_recursive_render_text() -> took %6.4f",
+      info("%s: rendering took %6.4f",
           __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
 
       if (show_links)

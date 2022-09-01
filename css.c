@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wctype.h>
+#include <ctype.h>
 #endif
 
 static char *PREDEF_CSS = "\
@@ -13,6 +14,7 @@ static char *PREDEF_CSS = "\
   font-family: Comic Sans MS;\
   color: black;\
   background-color: #dedede;\
+  font-size: 15px;\
 }\
 a {\
   color: blue;\
@@ -169,33 +171,54 @@ static int css_colname_to_int(char *v) {
 
 /* CSS_otype has to be specified in the struct before calling that function */
 static void css_str_to_val_metric(CSS_opt *opt, char *v) {
-  /* put anything color-related here */
-  if (opt->t == COLOR || opt->t == BACKGROUND_COLOR) {
-    opt->m = M_COLOR;
-    switch (*v) {
-      case '#':
-        /* TODO: #nnnnnn -> 0xnnnnnn */
-        opt->v = 0xff00ff;
-        return;
-        break;
-      /*case 'r':
-      case 'h':
-        warn("%s: rgb(), rgba(), hsl() not supported", __FILE__);
-        opt->v = 0xff00ff;
-        return;
-        break;*/
-      default:
-        opt->v = css_colname_to_int(v);
-        return;
-        break;
-    }
-  } else if (opt->t == FONT_FAMILY) {
-    /* or anything else that requires type M_STRING */
-    opt->m = M_STRING;
-    opt->v_str = malloc(strlen(v) + 1);
-    strcpy(opt->v_str, v);
-    opt->v_str[strlen(v)] = 0;
-    return;
+  int i = 0;
+
+  switch (opt->t) {
+    /* put anything color-related here */
+    case COLOR:
+    case BACKGROUND_COLOR:
+      opt->m = M_COLOR;
+      switch (*v) {
+        case '#':
+          /* TODO: #nnnnnn -> 0xnnnnnn */
+          opt->v = 0xff00ff;
+          return;
+          break;
+        /*case 'r':
+        case 'h':
+          warn("%s: rgb(), rgba(), hsl() not supported", __FILE__);
+          opt->v = 0xff00ff;
+          return;
+          break;*/
+        default:
+          opt->v = css_colname_to_int(v);
+          return;
+          break;
+      }
+      break;
+    case FONT_FAMILY:
+      /* or anything else that requires type M_STRING */
+      opt->m = M_STRING;
+      opt->v_str = malloc(strlen(v) + 1);
+      strcpy(opt->v_str, v);
+      opt->v_str[strlen(v)] = 0;
+      return;
+    /* anything size-related */
+    case FONTSIZE:
+      while (isdigit(*v))
+        ++i, ++v;
+
+      if (strcmp(v, "px") == 0) opt->m = M_PIXEL;
+      if (strcmp(v, "in") == 0) opt->m = M_INCH;
+      if (strcmp(v, "%") == 0) opt->m = M_PERCENT;
+      else opt->m = M_PIXEL;
+
+      opt->v = atoi(v - i);
+      return;
+      break;
+    case CSS_UNKNOWN:
+    case CSS_NEXT_SELECTOR:
+      break;
   }
 
   opt->v = -1;
