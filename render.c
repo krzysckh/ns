@@ -286,7 +286,8 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
           g_render_map.css[i]);
     }
 
-    fntstr = malloc(strlen(fnt) + intlen(sz) + 1);
+    fntstr = malloc(strlen(fnt) + intlen(sz) + 12);
+    /* 12 -> strlen(":pixelsize=") + 1 where 1 is null byte */
 
     snprintf(fntstr, strlen(fnt) + strlen(":pixelsize=") + 1 + intlen(sz),
         "%s:pixelsize=%d", fnt, sz);
