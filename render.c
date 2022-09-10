@@ -249,10 +249,13 @@ static int intlen(int x) {
 static void rendermap_render(Display *dpy, XftDraw *xd) {
   int i,
       j,
-      sz = -1;
+      sz = -1,
+      f_weight = 400 / 4;
   char *clr,
        *fnt,
-       *fntstr;
+       *fntstr,
+       *fnt_stl;
+
   warn("%s: render me daddy", __FILE__);
   for (i = 0; i < g_render_map.rm_sz; ++i) {
     clr = NULL, fnt = NULL;
@@ -278,6 +281,13 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
               sz = 15;
           }
           break;
+        case FONT_WEIGHT:
+          f_weight = g_render_map.css[i]->o[j].v / 4;
+          break;
+        case FONT_STYLE:
+          fnt_stl = g_render_map.css[i]->o[j].v_str;
+          /* don't free me. i will cry */
+          break;
       }
     }
 
@@ -286,11 +296,15 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
           g_render_map.css[i]);
     }
 
-    fntstr = malloc(strlen(fnt) + intlen(sz) + 12);
-    /* 12 -> strlen(":pixelsize=") + 1 where 1 is null byte */
+    fntstr = malloc(strlen(fnt) + strlen(fnt_stl) + intlen(sz) +
+        intlen(f_weight) + 27);
+    /* 20 -> strlen(":pixelsize=") + strlen(":weight=") + strlen(":slant=") + 1
+     * where 1 is null byte
+     */
 
-    snprintf(fntstr, strlen(fnt) + strlen(":pixelsize=") + 1 + intlen(sz),
-        "%s:pixelsize=%d", fnt, sz);
+    snprintf(fntstr, strlen(fnt) + strlen(fnt_stl)  + 27 + intlen(sz) +
+        intlen(f_weight), "%s:pixelsize=%d:weight=%d:slant=%s", fnt, sz,
+        f_weight, fnt_stl);
     /*warn("fontstr = %s", fntstr);*/
 
     x_load_render_destroy(fntstr, g_render_map.v[i], clr, g_render_map.x[i],
@@ -469,8 +483,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
       bakx = *x,
       x1,
       y1,
-      x2,
-      y2;
+      fsz;
   char *draw;
   Text_attr at;
 
@@ -486,9 +499,6 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     }
   } else if (el->t == IMAGE) {
     x_render_image(el, x, y, dpy, xd);
-  } else if (el->t == A) {
-    x1 = *x;
-    y1 = *y - fontsz;
   } else if (el->t == PARAGRAPH 
       || el->t == BREAK_LINE
       || el->t == H1
@@ -517,8 +527,6 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     }
 
     draw = el->TT_val;
-    
-
     while (*draw) {
       if (*y > maxh) {
 #ifdef DUMB_WARNINGS
@@ -535,106 +543,34 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
         return;
       }
 
-      if (at.h1) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-          atoi(h1_sz), fontratio, 1);
-      else if (at.h2) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-          atoi(h2_sz), fontratio, 1);
-      else if (at.h3) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-          atoi(h3_sz), fontratio, 1);
-      else if (at.h4) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-          atoi(h4_sz), fontratio, 1);
-      else if (at.h5) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-          atoi(h5_sz), fontratio, 1);
-      else if (at.h6) maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx,
-          atoi(h6_sz), fontratio, 1);
-      else
-        maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx, fontsz, fontratio, 
-            1);
+      for (i = 0; i < el->css.o_n; ++i)
+        if (el->css.o[i].t == FONTSIZE)
+          fsz = el->css.o[i].v;
 
-      if (at.bold)
-        XftDrawStringUtf8(xd, color, font_b, *x, *y, (const FcChar8*)draw,
-            ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));
-      else if (at.italic)
-        XftDrawStringUtf8(xd, color, font_i, *x, *y, (const FcChar8*)draw,
-            ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));
-      else if (at.h1) {
-        *y = *y + atoi(h1_sz);
-        x_load_render_destroy(font_t":pixelsize="h1_sz":style=bold", draw,
-            "#000000", *x, *y,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
-        *y = *y + atoi(h1_sz);
-      } else if (at.h2) {
-        *y = *y + atoi(h2_sz);
-        x_load_render_destroy(font_t":pixelsize="h2_sz":style=bold", draw,
-            "#000000", *x, *y,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
-        *y = *y + atoi(h2_sz);
-      } else if (at.h3) {
-        *y = *y + atoi(h3_sz);
-        x_load_render_destroy(font_t":pixelsize="h3_sz":style=bold", draw,
-            "#000000", *x, *y,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
-        *y = *y + atoi(h3_sz);
-      } else if (at.h4) {
-        *y = *y + atoi(h4_sz);
-        x_load_render_destroy(font_t":pixelsize="h4_sz":style=bold", draw,
-            "#000000", *x, *y,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
-        *y = *y + atoi(h4_sz);
-      } else if (at.h5) {
-        *y = *y + atoi(h5_sz);
-        x_load_render_destroy(font_t":pixelsize="h5_sz":style=bold", draw,
-            "#000000", *x, *y,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
-        *y = *y + atoi(h5_sz);
-      } else if (at.h6) {
-        *y = *y + atoi(h6_sz);
-        x_load_render_destroy(font_t":pixelsize="h6_sz":style=bold", draw,
-            "#000000", *x, *y,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);
-        *y = *y + atoi(h6_sz);
+      if (at.anchor) {
+        x1 = *x;
+        y1 = *y - fsz;
       }
-      else {
-        char *l_font_t = NULL,
-             *l_font_color = NULL,
-             fontstr[1024];
-        int l_font_sz = 15; /* lol */
-        for (i = 0; i < el->css.o_n; ++i)
-          if (el->css.o[i].t == COLOR) {
-            l_font_color = internal_color_to_str(el->css.o[i].v);
-            break;
-          }
-        for (i = 0; i < el->css.o_n; ++i)
-          if (el->css.o[i].t == FONT_FAMILY)
-            l_font_t = el->css.o[i].v_str;
 
-        if (l_font_t == NULL) {
-          warn("%s: font-family undefined (probably a bug)", __FILE__);
-          l_font_t = "monospace";
-        }
+      maxlen = x_get_maxlen(maxw, x, y, use_padding, bakx, fsz, fontratio, 1);
 
-        if (l_font_color == NULL) {
-          warn("%s: font color undefined (probably a bug)", __FILE__);
-          l_font_t = "#ff0000";
-        }
+      rendermap_add(*x, *y, draw, &el->css, ((int)strlen(draw) > maxlen) ?
+          maxlen : (int)strlen(draw));
 
-        snprintf(fontstr, 1024, "%s:pixelsize=%d:style=%s", l_font_t,
-            l_font_sz, "Normal");
-        rendermap_add(*x, *y, el->TT_val + (el->TT_val - draw), &el->css,
-          ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));
-        /*x_load_render_destroy(fontstr, draw, l_font_color, *x, *y,*/
-          /*((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw), dpy, xd);*/
-        free(l_font_color);
+      if (at.anchor) {
+        int what_the_fuck = (strlen(draw) > maxlen ? maxlen - (fontratio * *x) :
+          strlen(draw)) / 2;
+        register_click_object(x1, y1,
+            x1 + fsz * what_the_fuck,
+            y1 + fsz, el->parent);
       }
-        /*XftDrawStringUtf8(xd, color, font_n, *x, *y, (const FcChar8*)draw,*/
-            /*((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw));*/
 
       draw += ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw);
       *y = *y + fontsz * 2;
       *x = (use_padding) ? padding : bakx;
     }
 
-    *y = *y - fontsz * 2;
+    *y = *y - fsz * 2;
     if (at.h1 || at.h2 || at.h3 || at.h4 || at.h5 || at.h6)
       *x = (use_padding) ? padding : bakx;
     else 
@@ -642,6 +578,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
     /*XDrawString(d, w, DefaultGC(d, s), *x, *y, el->TT_val,*/
           /*strlen(el->TT_val));*/
+    /* this is history */
   } 
   if (el->t != TEXT_TYPE) {
     for (i = 0; i < el->child_n; ++i)
@@ -653,6 +590,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   /* and TODO: it will not work if the link is an header, or anything, that
    * returns to the next line after beinng written, so h{1,2,3,4,5,6}
    */
+#if 0
   if (el->t == A) {
     if (*x < x1) {
       /* there was a breakline */
@@ -668,6 +606,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
       register_click_object(x1, y1, x2, y2, el);
     }
   }
+#endif
 }
 
 static void x_init_fonts(Display *dpy, int s, Visual *visual, 

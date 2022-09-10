@@ -12,6 +12,8 @@
 static char *PREDEF_CSS = "\
 * {\
   font-family: Comic Sans MS;\
+  font-weight: normal;\
+  font-style: normal;\
   color: black;\
   background-color: #dedede;\
   font-size: 15px;\
@@ -19,6 +21,18 @@ static char *PREDEF_CSS = "\
 a {\
   color: blue;\
 }\
+b {\
+  font-weight: bold;\
+}\
+i {\
+  font-style: italic;\
+}\
+h1 { font-size: 40px; font-weight: bold; }\
+h2 { font-size: 30px; font-weight: bold; }\
+h3 { font-size: 25px; font-weight: bold; }\
+h4 { font-size: 16px; font-weight: bold; }\
+h5 { font-size: 13px; font-weight: bold; }\
+h6 { font-size:  9px; font-weight: bold; }\
 ";
 
 char *internal_color_to_str(uint32_t c) {
@@ -124,6 +138,8 @@ static CSS_otype get_css_otype(char *s) {
   else if (strcmp(lcase, "color") == 0) ret = COLOR;
   else if (strcmp(lcase, "font-size") == 0) ret = FONTSIZE;
   else if (strcmp(lcase, "font-family") == 0) ret = FONT_FAMILY;
+  else if (strcmp(lcase, "font-weight") == 0) ret = FONT_WEIGHT;
+  else if (strcmp(lcase, "font-style") == 0) ret = FONT_STYLE;
   else ret = CSS_UNKNOWN;
 
   free(lcase);
@@ -214,6 +230,41 @@ static void css_str_to_val_metric(CSS_opt *opt, char *v) {
       else opt->m = M_PIXEL;
 
       opt->v = atoi(v - i);
+      return;
+      break;
+    case FONT_WEIGHT:
+      opt->m = M_NUMBER;
+
+      if (isdigit(*v)) {
+        while (isdigit(*v))
+          ++i, ++v;
+        opt->v = atoi(v - i);
+      } else {
+        /* choose normal, bold, lighter, bolder */
+        if (strcmp("bold", v) == 0) opt->v = 700;
+        else if (strcmp("normal", v) == 0) opt->v = 400;
+        else if (strcmp("lighter", v) == 0) opt->v = 300;
+        else if (strcmp("bolder", v) == 0) opt->v = 500;
+        else {
+          warn("%s: unsupported option for FONT_WEIGHT - '%s'", __FILE__, v);
+          opt->v = 400;
+        }
+      }
+
+      return;
+      break;
+    case FONT_STYLE:
+      opt->m = M_STRING;
+      opt->v_str = malloc(8); /* strlen("oblique") + 1   :^) */
+      
+      if (strcmp("normal", v) == 0) strcpy(opt->v_str, "roman");
+      else if (strcmp("italic", v) == 0) strcpy(opt->v_str, v);
+      else if (strcmp("oblique", v) == 0) strcpy(opt->v_str, v);
+      else {
+        warn("%s: unsupported option for FONT_STYLE - '%s'", __FILE__, v);
+        strcpy(opt->v_str, "roman");
+      }
+
       return;
       break;
     case CSS_UNKNOWN:
