@@ -487,16 +487,22 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
   char *draw;
   Text_attr at;
 
+  calculate_css(el);
+
+  for (i = 0; i < el->css.o_n; ++i)
+    if (el->css.o[i].t == FONTSIZE)
+      fsz = el->css.o[i].v;
+
   if (el->t == TABLE) {
     x_render_table(dpy, xd, color, x, y, el, maxw, maxh);
     return;
-  } else if (el->t == LIST_ELEM) {
+  /*} else if (el->t == LIST_ELEM) {
     if (el->parent->t != ORDERED_LIST && el->parent->t != UNORDERED_LIST) {
       warn("%s: parent of %p (%p = %s) is neither ORDERED_LIST nor "
           "UNORDERED_LIST -- ignoring this branch", __FILE__, el,
           el->parent, elemt_to_str(el->parent->t));
       return ;
-    }
+    }*/
   } else if (el->t == IMAGE) {
     x_render_image(el, x, y, dpy, xd);
   } else if (el->t == PARAGRAPH 
@@ -507,15 +513,14 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
       || el->t == H4
       || el->t == H5
       || el->t == H6
+      || el->t == LIST_ELEM
       ) {
     if (use_padding)
-      *y = *y + (fontsz * 2);
+      *y = *y + (fsz * 2);
     *x = (use_padding) ? padding : fuck_you_this_is_bak_x;
   } else if (el->t == STYLE || el->t == SCRIPT || el->t == LINK) {
     return;
   } 
-
-  calculate_css(el);
 
   if (el->t == TEXT_TYPE) {
     init_text_attr(&at);
@@ -542,10 +547,6 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 #endif
         return;
       }
-
-      for (i = 0; i < el->css.o_n; ++i)
-        if (el->css.o[i].t == FONTSIZE)
-          fsz = el->css.o[i].v;
 
       if (at.anchor) {
         x1 = *x;
