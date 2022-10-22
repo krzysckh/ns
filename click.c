@@ -57,9 +57,14 @@ static int isinside(int x, int y, struct Click_object c) {
 
 HTML_elem *get_object_by_click(int x, int y) {
   int i;
+  extern int scroll_now, scroll_pixels;
 
   for (i = 0; i < cm.c_n; ++i)
+#ifdef USE_X
+    if (isinside(x, y - (scroll_now * scroll_pixels), cm.c[i]))
+#else
     if (isinside(x, y, cm.c[i]))
+#endif
       return cm.c[i].el;
 
   return NULL;
@@ -70,8 +75,10 @@ HTML_elem *get_object_by_click(int x, int y) {
 #include <X11/Xft/Xft.h>
 void x_draw_click_objects(XftDraw *xd, XftColor *color) {
   int i;
+  extern int scroll_now, scroll_pixels;
   for (i = 0; i < cm.c_n; ++i) {
-    XftDrawRect(xd, color, cm.c[i].x1, cm.c[i].y1, cm.c[i].x2 - cm.c[i].x1,
+    XftDrawRect(xd, color, cm.c[i].x1,
+        cm.c[i].y1 + (scroll_now * scroll_pixels), cm.c[i].x2 - cm.c[i].x1,
         cm.c[i].y2 - cm.c[i].y1);
   }
 }

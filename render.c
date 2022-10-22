@@ -195,7 +195,6 @@ void render_page(HTML_elem *page) {
 
 #ifdef USE_X
 
-#define scroll_pixels 30
 
 #define font_t "Dejavu Sans Mono"
 #define fontname_n "DejaVu Sans Mono:pixelsize=15:antialias=true"
@@ -227,6 +226,8 @@ XftFont *font_b;
 XftFont *font_i;
 
 static int fuck_you_this_is_bak_x = padding;
+int scroll_now = 0;
+const int scroll_pixels = 30;
 
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding);
@@ -600,6 +601,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
     draw = el->TT_val;
     while (*draw) {
+#if 0
       if (*y > maxh) {
 #ifdef DUMB_WARNINGS
         warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (no y space)",
@@ -607,6 +609,7 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 #endif
         return;
       }
+#endif
       if (*y + 10 < 0) {
 #ifdef DUMB_WARNINGS
         warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (y < 0)",
@@ -628,9 +631,9 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
       if (at.anchor) {
         int what_the_fuck = (strlen(draw) > maxlen ? maxlen - (fontratio * *x) :
           strlen(draw)) / 2;
-        register_click_object(x1, y1 + fsz/2,
+        register_click_object(x1, y1 + fsz/2 + (scroll_now * scroll_pixels),
             x1 + fsz * what_the_fuck,
-            y1 + fsz + fsz/2, el->parent);
+            y1 + fsz + fsz/2 + (scroll_now * scroll_pixels), el->parent);
       }
 
       draw += ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw);
@@ -705,8 +708,7 @@ static void x_render_page(HTML_elem *page) {
       rendermap_created = 0,
       i;
   FILE *tmpf;
-  signed int scroll = 0,
-             show_links = 0;
+  signed show_links = 0;
   Window win;
   XEvent ev;
   XWindowAttributes wa;
@@ -773,7 +775,7 @@ static void x_render_page(HTML_elem *page) {
         force_expose = 0;
       }
 
-      x_now = padding, y_now = padding + (scroll * scroll_pixels);
+      x_now = padding, y_now = padding + (scroll_now * scroll_pixels);
 
       XGetWindowAttributes(dpy, win, &wa);
       width = wa.width;
@@ -781,7 +783,7 @@ static void x_render_page(HTML_elem *page) {
 
       fn_start = clock();
       if (rendermap_created) {
-        rendermap_render(dpy, xd, scroll);
+        rendermap_render(dpy, xd, scroll_now);
       } else {
         clear_click_map();
         /* rn rendermap actually slows everything down, but once it's finished
@@ -790,7 +792,7 @@ static void x_render_page(HTML_elem *page) {
         rendermap_clear();
         x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
             height, 1);
-        rendermap_render(dpy, xd, scroll);
+        rendermap_render(dpy, xd, scroll_now);
         rendermap_created = 1;
       }
       fn_end = clock();
@@ -808,17 +810,17 @@ static void x_render_page(HTML_elem *page) {
         case XK_q:
           goto endloop;
         case XK_k:
-          if (scroll < 0) {
-            ++scroll;
+          if (scroll_now < 0) {
+            ++scroll_now;
             force_expose = 1;
           }
           break;
         case XK_j:
-          --scroll;
+          --scroll_now;
           force_expose = 1;
           break;
         case XK_space:
-          scroll -= 10;
+          scroll_now -= 10;
           force_expose = 1;
           break;
         case XK_d:
@@ -845,7 +847,7 @@ static void x_render_page(HTML_elem *page) {
                   fclose(tmpf);
                   force_expose = 1;
                   rendermap_created = 0;
-                  scroll = 0;
+                  scroll_now = 0;
                   break;
                 }
               }
@@ -854,13 +856,13 @@ static void x_render_page(HTML_elem *page) {
 
           break;
         case Button4:
-          if (scroll < 0) {
-            ++scroll;
+          if (scroll_now < 0) {
+            ++scroll_now;
             force_expose = 1;
           }
           break;
         case Button5:
-          --scroll;
+          --scroll_now;
           force_expose = 1;
           break;
       }

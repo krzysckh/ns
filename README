@@ -36,4 +36,4 @@ log:
                refactoring. fix 'DO NOT FUCKING RENDER PAGE EVERY TIME AN
                EVENT IS REGISTERED' todo when using X11. also changed the
                default font in css.c from Comic Sans to monospace for sanity's
-               sake.
+               sake. broke links. fixed links.
