@@ -28,3 +28,12 @@ references
 - http://wiki.9front.org/programming-gui
 - http://man.9front.org/1/mk
 - https://en.wikipedia.org/wiki/Five_stages_of_grief
+
+
+log:
+  23 oct 2022: fix render.c font rendering issues, speed up rendering on X11
+               after initial generation of the rendermap. the codebase _needs_
+               refactoring. fix 'DO NOT FUCKING RENDER PAGE EVERY TIME AN
+               EVENT IS REGISTERED' todo when using X11. also changed the
+               default font in css.c from Comic Sans to monospace for sanity's
+               sake.

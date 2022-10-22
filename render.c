@@ -19,10 +19,31 @@
  * should be rendered, so it has to be calculated once - when the page loads,
  * and then it just uses the RenderMap to render elements
  *
+ * renderObj is an object, that needs to be rendered every time the screen is
+ * cleared. e.g. a line, or a colored box.
+ *
+ * renderObjs are always rendered _before_ text, so they can (in the future)
+ * be used as backgrounds :^)
+ *
  * - replace all calls to libxft || string() via draw.h with calls to
  *   rendermap_add()
  * - when loading new webpage call rendermap_clear()
  */
+
+typedef enum {
+  BOX,
+  LINE,
+  /*CIRCLE,*/ /* ? */
+  /* god knows what */
+} ro_type;
+
+typedef struct {
+  int x1;
+  int y1;
+  int x2;
+  int y2;
+  ro_type t;
+} renderObj;
 
 typedef struct {
   char **v; /* value */
@@ -30,11 +51,28 @@ typedef struct {
   int *y;
   Calculated_CSS **css; /* css */
 
+  renderObj *ro;
+  int ro_n;
+
   int rm_sz;
 } RenderMap_t;
 
 static RenderMap_t g_render_map = { .v = NULL, .x = NULL, .y = NULL, 
-  .css = NULL, .rm_sz = 0 };
+  .css = NULL, .rm_sz = 0, .ro = NULL, .ro_n = 0 };
+
+static void rendermap_reg_robj(int x1, int y1, int x2, int y2, ro_type t) {
+  g_render_map.ro = realloc(g_render_map.ro, sizeof(renderObj) *
+      (g_render_map.ro_n + 1));
+
+  g_render_map.ro[g_render_map.ro_n].x1 = x1;
+  g_render_map.ro[g_render_map.ro_n].x2 = x2;
+  g_render_map.ro[g_render_map.ro_n].y1 = y1;
+  g_render_map.ro[g_render_map.ro_n].y2 = y2;
+  g_render_map.ro[g_render_map.ro_n].t = t;
+
+  g_render_map.ro_n++;
+}
+/* "easier" */
 
 static void rendermap_add(int x, int y, char *v, Calculated_CSS *css, int l) {
   g_render_map.x = realloc(g_render_map.x, sizeof(int) * 
@@ -59,6 +97,7 @@ static void rendermap_add(int x, int y, char *v, Calculated_CSS *css, int l) {
 static void rendermap_clear() {
   int i;
 
+  free(g_render_map.ro);
   for (i = 0; i < g_render_map.rm_sz; ++i)
     free(g_render_map.v[i]);
 
@@ -70,8 +109,11 @@ static void rendermap_clear() {
   g_render_map.x = g_render_map.y = NULL;
   g_render_map.v = NULL;
   g_render_map.css = NULL;
+  g_render_map.ro = NULL;
+
   /* so realloc() won't crash */
   g_render_map.rm_sz = 0;
+  g_render_map.ro_n = 0;
 }
 
 /* rendermap_render() will be declared later for USE_X and USE_9 */
@@ -153,10 +195,6 @@ void render_page(HTML_elem *page) {
 
 #ifdef USE_X
 
-/* TODO: DO NOT FUCKING RENDER PAGE EVERY TIME AN EVENT IS REGISTERED
- * thank you :^)
- */
-
 #define scroll_pixels 30
 
 #define font_t "Dejavu Sans Mono"
@@ -209,6 +247,7 @@ static int x_get_maxlen(int maxw, int *x, int *y, int use_padding, int bakx,
   
   return ret;
 }
+
 static void x_load_render_destroy(const char *fontn, const char *txt,
     const char *color, int x, int y, int len, Display *dpy, XftDraw *xd) {
   int s = DefaultScreen(dpy);
@@ -246,16 +285,33 @@ static int intlen(int x) {
   return 1;
 }
 
-static void rendermap_render(Display *dpy, XftDraw *xd) {
+static void rendermap_render(Display *dpy, XftDraw *xd, int scroll) {
   int i,
       j,
       sz = -1,
-      f_weight = 400 / 4;
+      f_weight = 400 / 4,
+      s = scroll * scroll_pixels;
   char *clr,
        *fnt,
        *fntstr,
        *fnt_stl;
 
+  for (i = 0; i < g_render_map.ro_n; i++) {
+    switch (g_render_map.ro[i].t) {
+      case LINE: ;
+        XftColor c;
+        if (!XftColorAllocName(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
+              DefaultColormap(dpy, DefaultScreen(dpy)), "#000000", &c))
+          err("%s: couldn't allocate xft color", __FILE__);
+
+        XftDrawRect(xd, &c, g_render_map.ro[i].x1, g_render_map.ro[i].y1 + s,
+            g_render_map.ro[i].x2, g_render_map.ro[i].y2);
+
+        break;
+      case BOX:
+        err("No.");
+    }
+  }
   warn("%s: render me daddy", __FILE__);
   for (i = 0; i < g_render_map.rm_sz; ++i) {
     clr = NULL, fnt = NULL;
@@ -307,8 +363,9 @@ static void rendermap_render(Display *dpy, XftDraw *xd) {
         f_weight, fnt_stl);
     /*warn("fontstr = %s", fntstr);*/
 
-    x_load_render_destroy(fntstr, g_render_map.v[i], clr, g_render_map.x[i],
-        g_render_map.y[i], strlen(g_render_map.v[i]), dpy, xd);
+    x_load_render_destroy(fntstr, g_render_map.v[i], clr,
+        g_render_map.x[i], g_render_map.y[i] + sz/2 + (scroll * scroll_pixels),
+        strlen(g_render_map.v[i]), dpy, xd);
 
     free(clr);
     free(fntstr);
@@ -420,11 +477,20 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
   t_width = (maxw - padding - *x - (table_bwidth * c_count)) / c_count;
   t_height = x_table_approx_height(el, t_width, *x);
 
+#if 0
   XftDrawRect(xd, color, *x, *y, maxw - *x - padding, table_bwidth);
   for (i = 0; i < c_count; ++i)
     XftDrawRect(xd, color, *x + (i * t_width) + table_bwidth, *y, table_bwidth,
         t_height);
   XftDrawRect(xd, color, *x + (c_count * t_width), *y, table_bwidth, t_height);
+#endif
+
+  rendermap_reg_robj(*x, *y, maxw - *x - padding, table_bwidth, LINE);
+  for (i = 0; i < c_count; ++i)
+    rendermap_reg_robj(*x + (i * t_width) + table_bwidth, *y, table_bwidth,
+        t_height, LINE);
+  rendermap_reg_robj(*x + (c_count * t_width), *y, table_bwidth, t_height,
+      LINE);
 
   for (i = 0; i < el->child_n; ++i) {
     *y += fontsz;
@@ -443,7 +509,8 @@ static void x_render_table_row(Display *dpy, XftDraw *xd, XftColor *color,
 
   *y += t_height;
   *x = padding;
-  XftDrawRect(xd, color, *x, *y, maxw - *x - padding, table_bwidth);
+  /*XftDrawRect(xd, color, *x, *y, maxw - *x - padding, table_bwidth);*/
+  rendermap_reg_robj(*x, *y, maxw - *x - padding, table_bwidth, LINE);
   
   fuck_you_this_is_bak_x = padding;
 }
@@ -561,9 +628,9 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
       if (at.anchor) {
         int what_the_fuck = (strlen(draw) > maxlen ? maxlen - (fontratio * *x) :
           strlen(draw)) / 2;
-        register_click_object(x1, y1,
+        register_click_object(x1, y1 + fsz/2,
             x1 + fsz * what_the_fuck,
-            y1 + fsz, el->parent);
+            y1 + fsz + fsz/2, el->parent);
       }
 
       draw += ((int)strlen(draw) > maxlen) ? maxlen : (int)strlen(draw);
@@ -635,6 +702,7 @@ static void x_render_page(HTML_elem *page) {
       x_now = padding,
       y_now = padding,
       force_expose = 0,
+      rendermap_created = 0,
       i;
   FILE *tmpf;
   signed int scroll = 0,
@@ -711,15 +779,20 @@ static void x_render_page(HTML_elem *page) {
       width = wa.width;
       height = wa.height;
 
-      clear_click_map();
       fn_start = clock();
-      /* rn rendermap actually slows everything down, but once it's finished
-       * it _should_ give some speed ups
-       */
-      rendermap_clear();
-      x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
-          height, 1);
-      rendermap_render(dpy, xd);
+      if (rendermap_created) {
+        rendermap_render(dpy, xd, scroll);
+      } else {
+        clear_click_map();
+        /* rn rendermap actually slows everything down, but once it's finished
+         * it _should_ give some speed ups
+         */
+        rendermap_clear();
+        x_recursive_render_text(dpy, xd, &color, &x_now, &y_now, page, width,
+            height, 1);
+        rendermap_render(dpy, xd, scroll);
+        rendermap_created = 1;
+      }
       fn_end = clock();
       info("%s: rendering took %6.4f",
           __FILE__, (double)(fn_end - fn_start) / CLOCKS_PER_SEC);
@@ -771,6 +844,7 @@ static void x_render_page(HTML_elem *page) {
                   page = create_HTML_tree(tmpf);
                   fclose(tmpf);
                   force_expose = 1;
+                  rendermap_created = 0;
                   scroll = 0;
                   break;
                 }

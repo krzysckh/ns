@@ -1,3 +1,6 @@
+#define MAX(x, y) x > y ? x : y
+#define MIN(x, y) x > y ? y : x
+
 #ifdef USE_9
 #include <u.h>
 #include <libc.h>
@@ -138,8 +141,8 @@ char *internal_color_to_str(uint32_t c);
 const char *elemt_to_str(HTML_elem_type t);
 
 HTML_elem *get_object_by_click(int x, int y);
-void register_click_object(int x1, int y1, int x2, int y2, HTML_elem *el);
 void clear_click_map();
+void register_click_object(int x1, int y1, int x2, int y2, HTML_elem *el);
 
 #ifdef USE_X
 #include <X11/Xlib.h>

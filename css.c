@@ -11,7 +11,7 @@
 
 static char *PREDEF_CSS = "\
 * {\
-  font-family: Comic Sans MS;\
+  font-family: monospace;\
   font-weight: normal;\
   font-style: normal;\
   color: black;\
