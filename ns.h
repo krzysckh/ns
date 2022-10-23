@@ -1,6 +1,8 @@
 #define MAX(x, y) x > y ? x : y
 #define MIN(x, y) x > y ? y : x
 
+#define _DEFAULT_SOURCE
+
 #ifdef USE_9
 #include <u.h>
 #include <libc.h>

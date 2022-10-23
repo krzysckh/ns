@@ -31,9 +31,9 @@ references
 
 
 log:
-  23 oct 2022: fix render.c font rendering issues, speed up rendering on X11
-               after initial generation of the rendermap. the codebase _needs_
-               refactoring. fix 'DO NOT FUCKING RENDER PAGE EVERY TIME AN
-               EVENT IS REGISTERED' todo when using X11. also changed the
-               default font in css.c from Comic Sans to monospace for sanity's
-               sake. broke links. fixed links.
+  23 oct 2022: Fix render.c font rendering issues, speed up rendering on X11
+               after initial generation of the rendermap. The codebase _needs_
+               refactoring. Fix 'DO NOT FUCKING RENDER PAGE EVERY TIME AN
+               EVENT IS REGISTERED' todo when using X11. Changed the default
+               font in css.c from Comic Sans to monospace for sanity's sake.
+               Broke links. Fixed links. Fixed compiler warnings.

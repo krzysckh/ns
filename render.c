@@ -119,8 +119,12 @@ static void rendermap_clear() {
 /* rendermap_render() will be declared later for USE_X and USE_9 */
 
 /* :^) */
+#ifdef USE_X
 static void x_render_page(HTML_elem*);
+#endif
+#ifdef USE_9
 static void plan9_render_page(HTML_elem*);
+#endif
 
 typedef struct {
   uint8_t bold;
@@ -329,6 +333,7 @@ static void rendermap_render(Display *dpy, XftDraw *xd, int scroll) {
             case M_INCH:
               warn("%s: inch not implemented. setting px (at %p)",
                   __FILE__, g_render_map.css[i]);
+              /* fallthru */
             case M_PIXEL:
               sz = g_render_map.css[i]->o[j].v;
               break;
@@ -629,8 +634,8 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
           maxlen : (int)strlen(draw));
 
       if (at.anchor) {
-        int what_the_fuck = (strlen(draw) > maxlen ? maxlen - (fontratio * *x) :
-          strlen(draw)) / 2;
+        int what_the_fuck = ((int)strlen(draw) > maxlen ? maxlen -
+            (fontratio * *x) : strlen(draw)) / 2;
         register_click_object(x1, y1 + fsz/2 + (scroll_now * scroll_pixels),
             x1 + fsz * what_the_fuck,
             y1 + fsz + fsz/2 + (scroll_now * scroll_pixels), el->parent);

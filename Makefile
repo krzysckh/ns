@@ -10,7 +10,8 @@ PLAN9PORT_BASEDIR=/usr/local/plan9
 # on openbsd
 
 .if ${OS} == "unix"
-CFLAGS=-Wall -Wextra -std=c89 -ggdb -Wno-unused-variable\
+CFLAGS=-Wall -Wextra -std=c89 -ggdb -Wno-unused-variable -Wno-switch \
+       -Wno-unused-parameter \
 			 `pkg-config --cflags x11 xft libcurl` \
 			 -DUSE_COLOR \
 			 -DUSE_X \
