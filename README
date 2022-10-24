@@ -37,3 +37,4 @@ log:
                EVENT IS REGISTERED' todo when using X11. Changed the default
                font in css.c from Comic Sans to monospace for sanity's sake.
                Broke links. Fixed links. Fixed compiler warnings.
+  24 oct 2022: Very ghetto speed up.

@@ -369,10 +369,14 @@ static void rendermap_render(Display *dpy, XftDraw *xd, int scroll) {
         f_weight, fnt_stl);
     /*warn("fontstr = %s", fntstr);*/
 
+    if (g_render_map.y[i] + sz/2 + (scroll * scroll_pixels) < 0)
+      goto do_not_render_me_please;
+
     x_load_render_destroy(fntstr, g_render_map.v[i], clr,
         g_render_map.x[i], g_render_map.y[i] + sz/2 + (scroll * scroll_pixels),
         strlen(g_render_map.v[i]), dpy, xd);
 
+do_not_render_me_please:
     free(clr);
     free(fntstr);
   }
