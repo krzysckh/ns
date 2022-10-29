@@ -4,9 +4,9 @@ LD=8l
 
 TARGET=ns
 
-OFILES=ns.cpp.o html.cpp.o render.cpp.o css.cpp.o net.cpp.o click.cpp.o
+OFILES=ns.cpp.o html.cpp.o render.cpp.o css.cpp.o net.cpp.o click.cpp.o console.cpp.o
 
-CPPFLAGS=-DUSE_9 -DDUMB_WARNINGS
+CPPFLAGS=-DUSE_9 -DDUMB_WARNINGS -DUSE_CONSOLE
 
 %.cpp.c: %.c
 	cpp $CPPFLAGS $stem.c > $stem.cpp.c

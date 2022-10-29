@@ -83,7 +83,7 @@ int main (int argc, char *argv[]) {
   ARGBEGIN {
     case 'h':
       printf("usage: %s [-hdc] [link]\n", argv[0]);
-      exit(0);
+      exits(nil);
       break;
     case 'd':
       debug = 1;
@@ -95,7 +95,7 @@ int main (int argc, char *argv[]) {
       silent = 1;
       break;
     default:
-      exit(1);
+      exits(nil);
   } ARGEND;
 
   if (*argv == NULL) {
