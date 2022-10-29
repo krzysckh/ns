@@ -5,7 +5,12 @@
 #else
 #include <stdlib.h>
 #include <stdarg.h>
+#include <getopt.h>
 #endif
+
+int debug,
+    console,
+    silent;
 
 void err(char *fmt, ...) {
   va_list vl;
@@ -29,6 +34,8 @@ void err(char *fmt, ...) {
 }
 
 void warn(char *fmt, ...) {
+  if (silent) return;
+
   va_list vl;
   va_start(vl, fmt);
 #ifdef USE_COLOR
@@ -45,6 +52,8 @@ void warn(char *fmt, ...) {
 }
 
 void info(char *fmt, ...) {
+  if (silent) return;
+
   va_list vl;
   va_start(vl, fmt);
 #ifdef USE_COLOR
@@ -65,15 +74,63 @@ int main (int argc, char *argv[]) {
   int f;
 #else
   FILE *f;
+  int opt;
+  debug = 0,
+  console = 0;
 #endif
 
-  if (argc > 1)
-    f = download_file(argv[1]);
-  else
 #ifdef USE_9
+  ARGBEGIN {
+    case 'h':
+      printf("usage: %s [-hdc] [link]\n", argv[0]);
+      exit(0);
+      break;
+    case 'd':
+      debug = 1;
+      break;
+    case 'c':
+      console = 1;
+      /* fallthru */
+    case 's':
+      silent = 1;
+      break;
+    default:
+      exit(1);
+  } ARGEND;
+
+  if (*argv == NULL) {
     f = open("test.html", OREAD);
+    if (!f) err("%s: couldnt open test.html", __FILE__);
+  } else {
+    f = download_file(*argv);
+  }
 #else
+  while ((opt = getopt(argc, argv, "hdcs")) != -1) {
+    switch (opt) {
+      case 'h':
+        printf("usage: %s [-hdc] [link]\n", argv[0]);
+        exit(0);
+        break;
+      case 'd':
+        debug = 1;
+        break;
+      case 'c':
+        console = 1;
+        /* fallthru */
+      case 's':
+        silent = 1;
+        break;
+      default:
+        exit(1);
+    }
+  }
+
+  if (argv[optind] == NULL) {
     f = fopen("test.html", "r");
+    if (!f) err("%s: couldnt open test.html", __FILE__);
+  } else {
+    f = download_file(argv[optind]);
+  }
 #endif
 
   HTML_elem *tree = create_HTML_tree(f);

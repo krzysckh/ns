@@ -32,6 +32,10 @@ typedef unsigned long int uint32_t;
 #include <stdint.h>
 #endif
 
+#if defined(USE_9) && defined(USE_X)
+#error cannot USE_9 and USE_X
+#endif
+
 typedef enum {
   ROOT,
   HTML,
@@ -161,3 +165,7 @@ void p9_draw_click_objects(Image *screen);
 void err(char *fmt, ...);
 void warn(char *fmt, ...);
 void info(char *fmt, ...);
+
+#ifdef USE_CONSOLE
+void console_render_page(HTML_elem *page);
+#endif

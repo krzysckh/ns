@@ -14,6 +14,10 @@
 #include <time.h>
 #endif
 
+#ifdef USE_CONSOLE
+extern int console;
+#endif
+
 /* so - the page rendering is slow if everything is calculated everytime 
  * an event happens. my idea: create a RenderMap that holds text and how it
  * should be rendered, so it has to be calculated once - when the page loads,
@@ -189,6 +193,12 @@ void get_text_attr(HTML_elem *el, Text_attr *attr, int forwards) {
 }
 
 void render_page(HTML_elem *page) {
+#ifdef USE_CONSOLE
+  if (console) {
+    console_render_page(page);
+    return;
+  }
+#endif
 #ifdef USE_X
   x_render_page(page);
 #endif

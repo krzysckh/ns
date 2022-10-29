@@ -4,7 +4,7 @@ OS=unix
 # plan9port - compiles a version for plan9port
 
 TARGET=ns
-OFILES=ns.o html.o render.o css.o net.o click.o
+OFILES=ns.o html.o render.o css.o net.o click.o console.o
 
 PLAN9PORT_BASEDIR=/usr/local/plan9
 # on openbsd
@@ -16,6 +16,7 @@ CFLAGS=-Wall -Wextra -std=c89 -ggdb -Wno-unused-variable -Wno-switch \
 			 -DUSE_COLOR \
 			 -DUSE_X \
 			 -DUSE_CURL \
+			 -DUSE_CONSOLE \
 			 -DDUMB_WARNINGS
 LDFLAGS=`pkg-config --libs x11 xft libcurl`
 .endif
@@ -30,7 +31,8 @@ CFLAGS=\
 	-DFONTDIR9=\"$(PLAN9PORT_BASEDIR)/font\" \
 	-DFONTTYPE9=\"lucsans\" \
 	-DFONTNAME9=\"typeunicode\" \
-	-DFONTSIZE9=\"7\"
+	-DFONTSIZE9=\"7\"\
+	-DUSE_CONSOLE
 .endif
 
 
