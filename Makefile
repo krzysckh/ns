@@ -12,13 +12,14 @@ PLAN9PORT_BASEDIR=/usr/local/plan9
 .if ${OS} == "unix"
 CFLAGS=-Wall -Wextra -std=c89 -ggdb -Wno-unused-variable -Wno-switch \
        -Wno-unused-parameter \
-			 `pkg-config --cflags x11 xft libcurl` \
-			 -DUSE_COLOR \
-			 -DUSE_X \
-			 -DUSE_CURL \
-			 -DUSE_CONSOLE \
-			 -DDUMB_WARNINGS
-LDFLAGS=`pkg-config --libs x11 xft libcurl`
+	`pkg-config --cflags x11 xft libcurl` \
+	-DUSE_COLOR \
+	-DUSE_X \
+	-DUSE_CURL \
+	-DUSE_CONSOLE \
+	-DNO_WITH_HSL \
+	-DDUMB_WARNINGS
+LDFLAGS=`pkg-config --libs x11 xft libcurl` -lm
 .endif
 
 .if ${OS} == "plan9port"
@@ -32,6 +33,7 @@ CFLAGS=\
 	-DFONTTYPE9=\"lucsans\" \
 	-DFONTNAME9=\"typeunicode\" \
 	-DFONTSIZE9=\"7\"\
+	-DWITH_HSL \
 	-DUSE_CONSOLE
 .endif
 

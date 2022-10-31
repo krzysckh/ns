@@ -209,6 +209,7 @@ void render_page(HTML_elem *page) {
 
 #ifdef USE_X
 
+#define def_font "monospace:pixelsize=15:weight=100:slant=roman"
 
 #define font_t "Dejavu Sans Mono"
 #define fontname_n "DejaVu Sans Mono:pixelsize=15:antialias=true"
@@ -235,13 +236,11 @@ void render_page(HTML_elem *page) {
 
 #include <X11/Xft/Xft.h>
 
-XftFont *font_n;
-XftFont *font_b;
-XftFont *font_i;
-
 static int fuck_you_this_is_bak_x = padding;
 int scroll_now = 0;
 const int scroll_pixels = 30;
+
+static XftFont *default_font;
 
 static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
     int *x, int *y, HTML_elem *el, int maxw, int maxh, int use_padding);
@@ -265,13 +264,16 @@ static int x_get_maxlen(int maxw, int *x, int *y, int use_padding, int bakx,
 
 static void x_load_render_destroy(const char *fontn, const char *txt,
     const char *color, int x, int y, int len, Display *dpy, XftDraw *xd) {
+  XftFont *fnt;
   int s = DefaultScreen(dpy);
   XftColor c;
-
-  XftFont *fnt = XftFontOpenName(dpy, s, fontn);
-
+  if (strcmp(fontn, def_font) == 0) {
+    fnt = default_font;
+  } else {
+   fnt = XftFontOpenName(dpy, s, fontn);
   if (!fnt)
     err("%s: couldn't load font %s", __FILE__, fontn);
+  }
 
   if (!XftColorAllocName(dpy, DefaultVisual(dpy, s), 
         DefaultColormap(dpy, s), color, &c))
@@ -556,10 +558,12 @@ static void x_render_table(Display *dpy, XftDraw *xd, XftColor *color, int *x,
 static void x_render_image(HTML_elem *el, int *x, int *y, Display *dpy, 
     XftDraw *xd) {
   *y += 40;
+#if 0
   x_load_render_destroy("Comic Sans MS:pixelsize=20", "[IMAGE]",
     "#ff00ff", *x, *y, 7, dpy, xd);
 
   *x = fuck_you_this_is_bak_x;
+#endif
   *y += 40;
 }
 
@@ -620,15 +624,6 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 
     draw = el->TT_val;
     while (*draw) {
-#if 0
-      if (*y > maxh) {
-#ifdef DUMB_WARNINGS
-        warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (no y space)",
-            __FILE__, draw, draw, *x, *y);
-#endif
-        return;
-      }
-#endif
       if (*y + 10 < 0) {
 #ifdef DUMB_WARNINGS
         warn("%s: couldn't draw text \"%s\" (%p) at [%d, %d] (y < 0)",
@@ -699,22 +694,11 @@ static void x_recursive_render_text(Display *dpy, XftDraw *xd, XftColor *color,
 #endif
 }
 
-static void x_init_fonts(Display *dpy, int s, Visual *visual, 
-    Colormap cmap, const char *color_color, XftColor *color) {
-  font_n = XftFontOpenName(dpy, s, fontname_n);
-  font_b = XftFontOpenName(dpy, s, fontname_b);
-  font_i = XftFontOpenName(dpy, s, fontname_i);
+static void x_init_default_font(Display *dpy) {
+  default_font = XftFontOpenName(dpy, DefaultScreen(dpy), def_font);
 
-  if (!font_n)
-    err("%s: couldn't load font %s", __FILE__, fontname_n);
-  if (!font_b)
-    err("%s: couldn't load font %s", __FILE__, fontname_b);
-  if (!font_i)
-    err("%s: couldn't load font %s", __FILE__, fontname_i);
-
-  if (!XftColorAllocName(dpy, visual, cmap, color_color, color))
-    err("%s: couldn't allocate xft color", __FILE__);
-
+  if (!default_font)
+    err("%s: couldn't load font %s", __FILE__, def_font);
 }
 
 static void x_render_page(HTML_elem *page) {
@@ -769,8 +753,6 @@ static void x_render_page(HTML_elem *page) {
 
   XStoreName(dpy, win, "netskater");
 
-  x_init_fonts(dpy, s, visual, cmap, "#000000", &color);
-
   if (!XftColorAllocName(dpy, visual, cmap, "#ffffff", &bgcolor))
     err("%s: couldn't allocate xft color", __FILE__);
 
@@ -780,6 +762,8 @@ static void x_render_page(HTML_elem *page) {
     visual,
     cmap
   );
+
+  x_init_default_font(dpy);
 
   while (1) {
     if (!force_expose)

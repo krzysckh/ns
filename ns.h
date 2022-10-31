@@ -3,6 +3,8 @@
 
 #define _DEFAULT_SOURCE
 
+#define PROGNAME "ns"
+
 #ifdef USE_9
 #include <u.h>
 #include <libc.h>
@@ -87,6 +89,8 @@ typedef enum {
   FONT_FAMILY,
   FONT_WEIGHT,
   FONT_STYLE,
+  BORDER_WIDTH,
+  BORDER_COLOR,
   CSS_UNKNOWN,
   CSS_NEXT_SELECTOR
 } CSS_otype;
@@ -167,5 +171,5 @@ void warn(char *fmt, ...);
 void info(char *fmt, ...);
 
 #ifdef USE_CONSOLE
-void console_render_page(HTML_elem *page);
+int console_render_page(HTML_elem *page);
 #endif

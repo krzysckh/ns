@@ -7,7 +7,10 @@
 #include <string.h>
 #include <wctype.h>
 #include <ctype.h>
+#include <math.h>
 #endif
+
+#define skipspace(v) while(isspace(*v)) v++
 
 static char *PREDEF_CSS = "\
 * {\
@@ -15,7 +18,7 @@ static char *PREDEF_CSS = "\
   font-weight: normal;\
   font-style: normal;\
   color: black;\
-  background-color: #dedede;\
+  background-color: white;\
   font-size: 15px;\
 }\
 a {\
@@ -27,6 +30,8 @@ b {\
 i {\
   font-style: italic;\
 }\
+td { border-width: 1px; border-color: pink; }\
+table { border-width: 1px; border-color: pink; }\
 h1 { font-size: 40px; font-weight: bold; }\
 h2 { font-size: 30px; font-weight: bold; }\
 h3 { font-size: 25px; font-weight: bold; }\
@@ -140,6 +145,9 @@ static CSS_otype get_css_otype(char *s) {
   else if (strcmp(lcase, "font-family") == 0) ret = FONT_FAMILY;
   else if (strcmp(lcase, "font-weight") == 0) ret = FONT_WEIGHT;
   else if (strcmp(lcase, "font-style") == 0) ret = FONT_STYLE;
+  else if (strcmp(lcase, "border-width") == 0) ret = BORDER_WIDTH;
+  else if (strcmp(lcase, "border-color") == 0) ret = BORDER_COLOR;
+
   else ret = CSS_UNKNOWN;
 
   free(lcase);
@@ -170,9 +178,31 @@ static char *get_css_val(char *stl, int isinline) {
   return ret;
 }
 
+static int count_whitespace(char *s, int n) {
+  int ret = 0;
+
+  while (n--)
+    if (isspace(*s++)) ret++;
+
+  return ret;
+}
+
+#ifdef WITH_HSL
+static double hue2rgb(double p, double q, double t) {
+  if (t < 0) t++;
+  if (t > 1) t--;
+  if (t < 1 / 6) return p + (q - p) * 6 * t;
+  if (t < 1 / 2) return q;
+  if (t < 2 / 3) return p + (q - p) * (2/3 - t) * 6;
+  return p;
+  /* via http://mjijackson.com/ */
+}
+#endif
+
 static int css_colname_to_int(char *v) {
   int i,
       val;
+  char *n;
 
   /* TODO: replace this with binary search */
   for (i = 0; i < CSS_COLOR_MAP_L; ++i) {
@@ -181,8 +211,103 @@ static int css_colname_to_int(char *v) {
     }
   }
 
-  warn("%s: unknown color '%s'", __FILE__, v);
-  return 0xff00ff;
+  if ((n = strchr(v, '(')) != NULL) {
+    /* it's hsl() or rgb() etc. */
+    char *fun_n = malloc(n - v + 1);
+    int type;
+    enum {
+      t_rgb  = 0,
+      t_hsl  = 1,
+      t_rgba = 2,
+      t_hsla = 3
+    };
+
+    strncpy(fun_n, v, n - v);
+    fun_n[n - v] = 0;
+
+    if (strcmp(fun_n, "rgb") == 0) type = t_rgb;
+    else if (strcmp(fun_n, "rgba") == 0) type = t_rgba;
+    else if (strcmp(fun_n, "hsl") == 0) type = t_hsl;
+    else if (strcmp(fun_n, "hsla") == 0) type = t_hsla;
+    else {
+      warn("%s: unknown '%s()' - using as rgb()", __FILE__, fun_n);
+      type = t_rgb;
+    }
+
+    if (type > 1)
+      warn("%s: alpha in colors not implemented (%s)", __FILE__, v);
+    long ret;
+    short val[3] = {0};
+    int x,
+        cur_v = 0;
+    char *ex = malloc(4),
+         *tmp_c = malloc(7);
+
+    if (type > 1) strcpy(ex, ",,,");
+    else strcpy(ex, ",,)");
+    v = n + 1;
+
+    while (*ex) {
+      skipspace(v);
+      x = strchr(v, *ex++) - v;
+      x -= count_whitespace(v, x) + 1;
+      while (isdigit(*v))
+        val[cur_v] += (*v++ - '0') * pow(10, x--);
+      skipspace(v);
+      v++, cur_v++;
+    }
+
+    if (type == t_hsl || type == t_hsla) {
+#ifdef WITH_HSL
+      /* thank you michael jackson (http://mjijackson.com) for that
+       *
+       * this is not my code and i have _no clue_ what it is doing
+       * i mean - nothing harmless, but i just don't have the brains to figure
+       * out how to convert hsl -> rgb
+       */
+      double r,
+             g,
+             b,
+             p,
+             q,
+             h = val[0],
+             s = val[1],
+             l = val[2];
+
+      h /= 100, s /= 100, l /= 100; /* assumes h, s and l are in % */
+
+      if (s == 0) {
+        r = g = b = l;
+      } else {
+        q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        p = 2 * l - q;
+        r = hue2rgb(p, q, h + (double)(1/3));
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - (double)(1/3));
+      }
+
+      val[0] = r * 255;
+      val[1] = g * 255;
+      val[2] = b * 255;
+#else
+      warn("%s: compiled without hsl() support", __FILE__);
+      val[0] = 255;
+      val[1] = 0;
+      val[2] = 255;
+#endif
+    }
+
+    /* TODO: faster solution without snprintf */
+    snprintf(tmp_c, 7, "%.2x%.2x%.2x", val[0], val[1], val[2]);
+    ret = strtoul(tmp_c, NULL, 16);
+
+    free(ex - 3);
+    free(tmp_c);
+    return ret;
+  } else {
+    warn("%s: unknown color '%s'", __FILE__, v);
+    return 0xff00ff;
+  }
 }
 
 /* CSS_otype has to be specified in the struct before calling that function */
@@ -196,16 +321,9 @@ static void css_str_to_val_metric(CSS_opt *opt, char *v) {
       opt->m = M_COLOR;
       switch (*v) {
         case '#':
-          /* TODO: #nnnnnn -> 0xnnnnnn */
-          opt->v = 0xff00ff;
+          opt->v = strtoul(++v, NULL, 16);
           return;
           break;
-        /*case 'r':
-        case 'h':
-          warn("%s: rgb(), rgba(), hsl() not supported", __FILE__);
-          opt->v = 0xff00ff;
-          return;
-          break;*/
         default:
           opt->v = css_colname_to_int(v);
           return;

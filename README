@@ -39,3 +39,8 @@ log:
                Broke links. Fixed links. Fixed compiler warnings.
   24 oct 2022: Very ghetto speed up.
   29 oct 2022: Very ghetto console rendering implementation (console.c).
+  31 oct 2022: added default_font in render.c to speed up rendering big blocks
+               of text in default font (via x_load_render_destroy()).
+  01 nov 2022: css.c now accepts html color notation (#xxxxxx), rgb(), rgba().
+               started implementing hsl() by ripping off Michael Jackson - it
+               went poorly. :^)

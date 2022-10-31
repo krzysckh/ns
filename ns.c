@@ -10,7 +10,12 @@
 
 int debug,
     console,
-    silent;
+    silent,
+    termw = 80;
+
+static void usage() {
+  err("%s: usage: %s [-hdc] [-t width] [link]", __FILE__, PROGNAME);
+}
 
 void err(char *fmt, ...) {
   va_list vl;
@@ -82,8 +87,7 @@ int main (int argc, char *argv[]) {
 #ifdef USE_9
   ARGBEGIN {
     case 'h':
-      printf("usage: %s [-hdc] [link]\n", argv[0]);
-      exits(nil);
+      usage();
       break;
     case 'd':
       debug = 1;
@@ -94,8 +98,11 @@ int main (int argc, char *argv[]) {
     case 's':
       silent = 1;
       break;
+    case 't':
+      termw = EARGF(usage());
+      break;
     default:
-      exits(nil);
+      usage();
   } ARGEND;
 
   if (*argv == NULL) {
@@ -105,11 +112,10 @@ int main (int argc, char *argv[]) {
     f = download_file(*argv);
   }
 #else
-  while ((opt = getopt(argc, argv, "hdcs")) != -1) {
+  while ((opt = getopt(argc, argv, "hdcst:")) != -1) {
     switch (opt) {
       case 'h':
-        printf("usage: %s [-hdc] [link]\n", argv[0]);
-        exit(0);
+        usage();
         break;
       case 'd':
         debug = 1;
@@ -120,8 +126,11 @@ int main (int argc, char *argv[]) {
       case 's':
         silent = 1;
         break;
+      case 't':
+        termw = atoi(optarg);
+        break;
       default:
-        exit(1);
+        usage();
     }
   }
 
