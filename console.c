@@ -7,7 +7,7 @@ extern int termw;
 #define console_get_td_width(n) (int)(termw / n) - 2 - (n-1)
 
 static void console_render_table(HTML_elem *t) {
-  puts("[table]");
+  printf("%s", "[table]\n");
 #if 0
   int i,
       j,

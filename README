@@ -43,4 +43,4 @@ log:
                of text in default font (via x_load_render_destroy()).
   01 nov 2022: css.c now accepts html color notation (#xxxxxx), rgb(), rgba().
                started implementing hsl() by ripping off Michael Jackson - it
-               went poorly. :^)
+               went poorly :^). Fix plan9, better mkfile.

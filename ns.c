@@ -13,7 +13,7 @@ int debug,
     silent,
     termw = 80;
 
-static void usage() {
+void usage() {
   err("%s: usage: %s [-hdc] [-t width] [link]", __FILE__, PROGNAME);
 }
 
@@ -80,10 +80,9 @@ int main (int argc, char *argv[]) {
 #else
   FILE *f;
   int opt;
-  debug = 0,
-  console = 0;
 #endif
-
+  debug = 0;
+  console = 0;
 #ifdef USE_9
   ARGBEGIN {
     case 'h':
@@ -99,7 +98,7 @@ int main (int argc, char *argv[]) {
       silent = 1;
       break;
     case 't':
-      termw = EARGF(usage());
+      termw = atoi(EARGF(usage()));
       break;
     default:
       usage();
