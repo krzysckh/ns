@@ -217,7 +217,7 @@ static int css_colname_to_int(char *v) {
          *ex = malloc(4),
          *tmp_c = malloc(7);
     short val[3] = {0};
-    long ret;
+    long ret = 0x000000;
     int x,
         type,
         cur_v = 0;
@@ -230,6 +230,8 @@ static int css_colname_to_int(char *v) {
     else if (strcmp(fun_n, "rgba") == 0) type = t_rgba;
     else if (strcmp(fun_n, "hsl" ) == 0) type = t_hsl;
     else if (strcmp(fun_n, "hsla") == 0) type = t_hsla;
+    else if (strcmp(fun_n, "var") == 0) return 0xff00ff; 
+    /* TODO: var() (please don't) */
     else {
       warn("%s: unknown '%s()' - using as rgb()", __FILE__, fun_n);
       type = t_rgb;
@@ -294,9 +296,9 @@ static int css_colname_to_int(char *v) {
 #endif
     }
 
-    /* TODO: faster solution without snprintf */
-    snprintf(tmp_c, 7, "%.2x%.2x%.2x", val[0], val[1], val[2]);
-    ret = strtoul(tmp_c, NULL, 16);
+    ret |= val[0] << 16;
+    ret |= val[1] << 8;
+    ret |= val[2];
 
     free(ex - 3);
     free(tmp_c);
