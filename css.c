@@ -213,21 +213,22 @@ static int css_colname_to_int(char *v) {
 
   if ((n = strchr(v, '(')) != NULL) {
     /* it's hsl() or rgb() etc. */
-    char *fun_n = malloc(n - v + 1);
-    int type;
-    enum {
-      t_rgb  = 0,
-      t_hsl  = 1,
-      t_rgba = 2,
-      t_hsla = 3
-    };
+    char *fun_n = malloc(n - v + 1),
+         *ex = malloc(4),
+         *tmp_c = malloc(7);
+    short val[3] = {0};
+    long ret;
+    int x,
+        type,
+        cur_v = 0;
+    enum { t_rgb = 0, t_hsl = 1, t_rgba = 2, t_hsla = 3 };
 
     strncpy(fun_n, v, n - v);
     fun_n[n - v] = 0;
 
-    if (strcmp(fun_n, "rgb") == 0) type = t_rgb;
+    if      (strcmp(fun_n, "rgb" ) == 0) type = t_rgb;
     else if (strcmp(fun_n, "rgba") == 0) type = t_rgba;
-    else if (strcmp(fun_n, "hsl") == 0) type = t_hsl;
+    else if (strcmp(fun_n, "hsl" ) == 0) type = t_hsl;
     else if (strcmp(fun_n, "hsla") == 0) type = t_hsla;
     else {
       warn("%s: unknown '%s()' - using as rgb()", __FILE__, fun_n);
@@ -236,15 +237,11 @@ static int css_colname_to_int(char *v) {
 
     if (type > 1)
       warn("%s: alpha in colors not implemented (%s)", __FILE__, v);
-    long ret;
-    short val[3] = {0};
-    int x,
-        cur_v = 0;
-    char *ex = malloc(4),
-         *tmp_c = malloc(7);
 
-    if (type > 1) strcpy(ex, ",,,");
-    else strcpy(ex, ",,)");
+    if (type > 1)
+      strcpy(ex, ",,,");
+    else
+      strcpy(ex, ",,)");
     v = n + 1;
 
     while (*ex) {
