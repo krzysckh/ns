@@ -21,6 +21,18 @@ plan9:
 
 note: on GNU/Linux you might need to install BSD-compatible make (e.g. bmake)
 
+keybinds
+--------
+{j, space} - scroll down
+k          - scroll up
+{1, Esc}   - quit
+d          - dump html tree to stdout
+l          - highlight links
+r          - create the rendermap again (redraw)
+
+left click - go to link
+scroll     - scroll
+
 references
 ----------
 - https://github.com/jsynacek/xft-example/blob/master/main.c
@@ -45,3 +57,4 @@ log:
                started implementing hsl() by ripping off Michael Jackson - it
                went poorly :^). Fix plan9, better mkfile. Faster rgb() etc.
                (snprintf() -> bit fiddling).
+  19 nov 2022: r key to redraw, document keybinds.

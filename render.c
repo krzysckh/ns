@@ -833,6 +833,10 @@ static void x_render_page(HTML_elem *page) {
           show_links = !show_links;
           force_expose = 1;
           break;
+        case XK_r:
+          show_links = rendermap_created = scroll_now = 0;
+          force_expose = 1;
+          break;
       }
     } else if (ev.type == ButtonPress) {
       switch (ev.xkey.keycode) {
